@@ -7,8 +7,8 @@ require.config({
 		'ludorum-gamepack': "../../lib/ludorum-gamepack"
 	}
 });
-require(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludorum, ludorum_gamepack01) {
-	APP.imports = { base: base, ludorum: ludorum, 'ludorum-gamepack': ludorum_gamepack01 };
+require(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludorum, ludorum_gamepack) {
+	APP.imports = { base: base, ludorum: ludorum, 'ludorum-gamepack': ludorum_gamepack };
 
 // Player options. /////////////////////////////////////////////////////////////
 	var PLAYER_OPTIONS = APP.PLAYER_OPTIONS = [
@@ -46,6 +46,27 @@ require(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludo
 		return '<option value="'+ i +'">'+ option.title +'</option>';
 	}).join(''));
 	
+	$('#player0, #player1').change(function () {
+		var i = this.id === 'player0' ? 0 : 1;
+		(function (option) {
+			if (option.runOnWorker) {
+				return ludorum.players.WebWorkerPlayer.create({ playerBuilder: option.builder }).then(function (player) {
+					//BEGIN Hack to load ludorum_pack in workers.
+					player.__future__ = new base.Future();
+					player.worker.postMessage('self.ludorum_gamepack = ('+ ludorum_gamepack.__init__ +')(self.base, self.ludorum), "OK"');
+					return player.__future__.then(function () {
+						return player;
+					});
+					//END hack.
+				});
+			} else {
+				return base.Future.when(option.builder());
+			}
+		})(PLAYER_OPTIONS[+this.value]).then(function (player) {
+			APP.players[i] = player;
+			APP.reset();
+		});
+	});/*
 	function selectPlayer(roleNumber, playerNumber) {
 		var option = PLAYER_OPTIONS[+playerNumber];
 		(option.runOnWorker
@@ -57,7 +78,7 @@ require(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludo
 		});
 	}
 	$('#player0').change(function () { selectPlayer(0, this.value); });
-	$('#player1').change(function () { selectPlayer(1, this.value); });
+	$('#player1').change(function () { selectPlayer(1, this.value); });*/
 	
 // Buttons. ////////////////////////////////////////////////////////////////////
 	$('#reset').click(APP.reset = function reset() {
