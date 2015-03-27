@@ -9,7 +9,7 @@ Package of board games to use with game framework [Ludorum](http://github.com/Le
 + [Mancala](http://en.wikipedia.org/wiki/Mancala) ([Kalah](http://en.wikipedia.org/wiki/Kalah) variant).
 + [Reversi (a.k.a Othello)](http://en.wikipedia.org/wiki/Reversi).
 
-It supports loading with AMD (with [RequireJS](http://requirejs.org/)) or a script tag (sets 'ludorum_gamepack01' in the global namespace).
+It supports loading with AMD (with [RequireJS](http://requirejs.org/)) or a script tag (sets `ludorum_gamepack` in the global namespace).
 
 ## License
 

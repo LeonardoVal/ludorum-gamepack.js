@@ -6,7 +6,7 @@
 	} else if (typeof module === 'object' && module.exports) {
 		module.exports = init(require('creatartis-base'), require('ludorum')); // CommonJS module.
 	} else { // Browser or web worker (probably).
-		global.ludorum_gamepack01 = init(global.base, global.ludorum); // Assumes base is loaded.
+		global.ludorum_gamepack = init(global.base, global.ludorum); // Assumes base is loaded.
 	}
 })(this, function __init__(base, ludorum) { "use strict";
 // Import synonyms. ////////////////////////////////////////////////////////////////////////////////
@@ -25,7 +25,7 @@
 
 // Library layout. /////////////////////////////////////////////////////////////////////////////////
 	var exports = {
-		__name__: 'ludorum-gamepack01',
+		__name__: 'ludorum-gamepack',
 		__init__: __init__,
 		__dependencies__: [base, ludorum]
 	};
