@@ -1,13 +1,13 @@
-﻿Game pack #1 for [Ludorum](http://github.com/LeonardoVal/ludorum.js)
-====================================================================
+﻿Game pack for [Ludorum](http://github.com/LeonardoVal/ludorum.js)
+=================================================================
 
 [![Built with Grunt](https://cdn.gruntjs.com/builtwith.png)](http://gruntjs.com/)
 
 Package of board games to use with game framework [Ludorum](http://github.com/LeonardoVal/ludorum.js). It currently includes:
 
-+ [Reversi (a.k.a Othello)](http://en.wikipedia.org/wiki/Reversi).
-
 + [Connect 4](http://en.wikipedia.org/wiki/Connect_Four).
++ [Mancala](http://en.wikipedia.org/wiki/Mancala) ([Kalah](http://en.wikipedia.org/wiki/Kalah) variant).
++ [Reversi (a.k.a Othello)](http://en.wikipedia.org/wiki/Reversi).
 
 It supports loading with AMD (with [RequireJS](http://requirejs.org/)) or a script tag (sets 'ludorum_gamepack01' in the global namespace).
 
