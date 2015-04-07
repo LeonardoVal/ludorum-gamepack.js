@@ -47,14 +47,9 @@ require(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludo
 		var i = this.id === 'player0' ? 0 : 1;
 		(function (option) {
 			if (option.runOnWorker) {
-				return ludorum.players.WebWorkerPlayer.create({ playerBuilder: option.builder }).then(function (player) {
-					//BEGIN Hack to load ludorum_pack in workers.
-					player.__future__ = new base.Future();
-					player.worker.postMessage('self.ludorum_gamepack = ('+ ludorum_gamepack.__init__ +')(self.base, self.ludorum), "OK"');
-					return player.__future__.then(function () {
-						return player;
-					});
-					//END hack.
+				return ludorum.players.WebWorkerPlayer.create({ 
+					playerBuilder: option.builder,
+					workerSetup: new Function('self.ludorum_gamepack = ('+ ludorum_gamepack.__init__ +')(self.base, self.ludorum)')
 				});
 			} else {
 				return base.Future.when(option.builder());
