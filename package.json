@@ -14,7 +14,7 @@
 	"licence": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "http://github.com/LeonardoVal/ludorum-gamepack01.js"
+		"url": "http://github.com/LeonardoVal/ludorum-gamepack.js"
 	},
 	"main": "build/ludorum-gamepack01.min.js",
 	"files": [

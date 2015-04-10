@@ -1,4 +1,4 @@
-﻿/** Gruntfile for [ludorum.js](http://github.com/LeonardoVal/ludorum.js).
+﻿/** Gruntfile for [ludorum-gamepack.js](http://github.com/LeonardoVal/ludorum-gamepack.js).
 */
 var sourceFiles = [ 'src/__prologue__.js',
 	'src/ConnectFour.js',
