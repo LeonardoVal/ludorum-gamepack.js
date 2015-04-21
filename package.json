@@ -16,7 +16,7 @@
 		"type": "git",
 		"url": "http://github.com/LeonardoVal/ludorum-gamepack.js"
 	},
-	"main": "build/ludorum-gamepack01.min.js",
+	"main": "build/ludorum-gamepack.min.js",
 	"files": [
 		"build",
 		"LICENSE.md"
