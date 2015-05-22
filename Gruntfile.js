@@ -5,6 +5,7 @@ var sourceFiles = [ 'src/__prologue__.js',
 	'src/Othello.js',
 	'src/Mancala.js',
 	'src/Colograph.js',
+	'src/Chess.js',
 // end
 	'src/__epilogue__.js'];
 

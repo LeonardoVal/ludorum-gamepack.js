@@ -1,0 +1,140 @@
+﻿/* CSS for the user interface to playtest the Chess implementation. 
+*/
+body {
+	font-family: Arial, Helvetica, sans-serif;
+}
+header {
+	margin-bottom: 1em;
+	text-align: center;
+}
+footer {
+	clear: both;
+	margin-top: 1em;
+	text-align: center;
+	font-size: large;
+}
+
+#container {
+	text-align: center;
+}
+
+#controls {
+	margin: auto;
+	text-align: center;
+	font-size: large;
+}
+#controls button {
+	border: 2px solid black;
+	border-radius: 2px;
+	font-size: large;
+}
+#controls select {
+	border: none;
+	text-align: center;
+	font-size: large;
+}
+#controls button {
+	background-color: white;
+	color: black;
+}
+#controls button:hover {
+	background-color: black;
+	color: white;
+}
+
+/* Game board *****************************************************************/
+#board table {
+	border-collapse: collapse;
+	margin: auto;
+/*BEGIN user-select: none */
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+/*END user-select: none */
+}
+#board table td {
+	width: 2em;
+	height: 2em;
+	border: 1px solid rgb(0,80,40) !important;
+}
+/* Black pieces */
+#board table .ludorum-square-Black-Bishop {
+	background-image: url('chess-black-bishop.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-Black-King {
+	background-image: url('chess-black-king.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-Black-Knight {
+	background-image: url('chess-black-knight.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-Black-Pawn {
+	background-image: url('chess-black-pawn.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-Black-Rook {
+	background-image: url('chess-black-rook.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-Black-Queen {
+	background-image: url('chess-black-queen.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+/* White pieces */
+#board table .ludorum-square-White-Bishop {
+	background-image: url('chess-white-bishop.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-White-King {
+	background-image: url('chess-white-king.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-White-Knight {
+	background-image: url('chess-white-knight.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-White-Pawn {
+	background-image: url('chess-white-pawn.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-White-Rook {
+	background-image: url('chess-white-rook.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-White-Queen {
+	background-image: url('chess-white-queen.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+/* Other square styles. */
+#board table .ludorum-square-move { 
+	background: red url('chess-move.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-empty { 
+	background-color: white;
+}
+
+#board table tr:nth-child(odd) td:nth-child(even) {
+	background-color: rgb(200,200,200);
+}
+#board table tr:nth-child(even) td:nth-child(odd) {
+	background-color: rgb(200,200,200);
+}
