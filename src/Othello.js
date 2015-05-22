@@ -75,7 +75,7 @@ games.Othello = declare(Game, {
 	lines of the opponent's pieces get enclosed between pieces of the active player.
 	*/
 	moves: function moves(player){
-		if (!player && this.__moves__) {
+		if (!player && this.hasOwnProperty('__moves__')) {
 			return this.__moves__;
 		}
 		player = player || this.activePlayer();
@@ -95,7 +95,11 @@ games.Othello = declare(Game, {
 		for (var id in coords) {
 			_moves.push(coords[id]);
 		}
-		return this.__moves__ = (_moves.length > 0 ? obj(player, _moves) : null);
+		_moves = _moves.length > 0 ? obj(player, _moves) : null;
+		if (arguments.length < 1) {
+			this.__moves__ = _moves; // Cache the result.
+		}
+		return _moves;
 	},
 	
 	/** When the active player encloses one or more lines of opponent's pieces between two of its 
