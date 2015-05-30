@@ -12,10 +12,14 @@ var Piece = declare({
 	
 	canMove: base.objects.unimplemented('Piece', 'canMove'),
 	
+	moveTo: function moveTo(position) {
+		return new this.constructor(this.player, position);
+	},
+	
 	next: function (game, board, move) {
 		return board.clone()
 			.__place__(move[1])
-			.__place__(move[2], new this.constructor(this.player, move[2]));
+			.__place__(move[2], this.moveTo(move[2]));
 	}
 });
 
@@ -47,7 +51,7 @@ var Chess = games.Chess = declare(Game, {
 				return [kindName, []];
 			}).toObject()];
 		}).toObject();
-		iterable(this.board.pieces).forEachApply(function (key, piece) {
+		iterable(this.board.pieces).forEachApply(function (_, piece) {
 			game.pieces[piece.player][piece.name].push(piece);
 		});
 	},
@@ -90,7 +94,7 @@ var Chess = games.Chess = declare(Game, {
 				new kinds.Knight(players[1], [7,6]),
 				new kinds.Rook(players[1], [7,7]),
 				]
-			);
+			).toArray();
 		return new ludorum.utils.CheckerboardFromPieces(8, 8, pieces);
 	},
 	
@@ -155,8 +159,8 @@ var Chess = games.Chess = declare(Game, {
 	},
 	
 	__displayHTML__: function __displayHTML__(ui) {
-		console.log("Display ui");//FIXME
-		var moves = this.moves(),
+		var game = this,
+			moves = this.moves(),
 			activePlayer = this.activePlayer(),
 			board = this.board,
 			movesByFrom = moves ? iterable(moves[activePlayer]).groupAll(function (m) {
@@ -175,7 +179,7 @@ var Chess = games.Chess = declare(Game, {
 			data.innerHTML = '&nbsp;';			
 			if (ui.selectedPiece) {
 				if (selectedMoves && selectedMoves.hasOwnProperty(coordString)) {
-					data.className = "ludorum-square-"+ activePlayer +"-move";
+					data.className = 'ludorum-square-'+ activePlayer +'-move';
 					data.onclick = function () {
 						var selectedPiece = ui.selectedPiece;
 						ui.selectedPiece = null;
@@ -250,14 +254,13 @@ Chess.kinds.Bishop = declare(Piece, {
 	game: Chess,
 	
 	moves: function moves(game, board) {
-		var piece = this,
-			result = [];
+		var piece = this;
 		return iterable(board.walks(this.position, Checkerboard.DIRECTIONS.DIAGONAL)).map(function (walk) {
 			var cont = true;
-			return walk.takeWhile(function (p) { 
+			return walk.tail().takeWhile(function (p) { 
 				var square = board.square(p),
-					r = cont && (square === null || square.player !== piece.player);
-				cont = square === null;
+					r = cont && (!square || square.player !== piece.player);
+				cont = cont && !square;
 				return r;
 			}).map(function (p) {
 				return ['move', piece.position, p];
@@ -281,13 +284,12 @@ Chess.kinds.King = declare(Piece, { // TODO Castling.
 	game: Chess,
 	
 	moves: function moves(game, board) {
-		var piece = this,
-			result = [];
+		var piece = this;
 		return iterable(Checkerboard.DIRECTIONS.EVERY).map(function (d) {
 			return ['move', piece.position, [piece.position[0] + d[0], piece.position[1] + d[1]]];
 		}, function (m) {
-			if (board.isValidCoord(m[1])) {
-				var s = board.square(m[1]);
+			if (board.isValidCoord(m[2])) {
+				var s = board.square(m[2]);
 				return !s || s.player !== piece.player;
 			} else {
 				return false;
@@ -307,13 +309,12 @@ Chess.kinds.Knight = declare(Piece, {
 	DELTAS: [[+2,+1],[+1,+2],[+2,-1],[-1,+2],[-2,-1],[-1,-2],[-2,+1],[+1,-2]],
 	
 	moves: function moves(game, board) {
-		var piece = this,
-			result = [];
+		var piece = this;
 		return iterable(this.DELTAS).map(function (d) {
 			return ['move', piece.position, [piece.position[0] + d[0], piece.position[1] + d[1]]];
 		}, function (m) {
-			if (board.isValidCoord(m[1])) {
-				var s = board.square(m[1]);
+			if (board.isValidCoord(m[2])) {
+				var s = board.square(m[2]);
 				return !s || s.player !== piece.player;
 			} else {
 				return false;
@@ -363,7 +364,7 @@ Chess.kinds.Pawn = declare(Piece, {
 			}).flatten();
 		} else {
 			return iterable(r).map(function (p) {
-				return ['move', piece, p];
+				return ['move', piece.position, p];
 			});
 		}
 	},
@@ -388,12 +389,13 @@ Chess.kinds.Rook = declare(Piece, {
 	game: Chess,
 	
 	moves: function moves(game, board) {
+		var piece = this;
 		return iterable(board.walks(this.position, Checkerboard.DIRECTIONS.ORTHOGONAL)).map(function (walk) {
 			var cont = true;
-			return walk.takeWhile(function (p) { 
+			return walk.tail().takeWhile(function (p) {
 				var square = board.square(p),
-					r = cont && (square === null || square.player !== piece.player);
-				cont = square === null;
+					r = cont && (!square || square.player !== piece.player);
+				cont = cont && !square;
 				return r;
 			}).map(function (p) {
 				return ['move', piece.position, p];
@@ -411,12 +413,13 @@ Chess.kinds.Queen = declare(Piece, {
 	game: Chess,
 	
 	moves: function moves(game, board) {
+		var piece = this;
 		return iterable(board.walks(this.position, Checkerboard.DIRECTIONS.EVERY)).map(function (walk) {
 			var cont = true;
-			return walk.takeWhile(function (p) { 
+			return walk.tail().takeWhile(function (p) { 
 				var square = board.square(p),
-					r = cont && (square === null || square.player !== piece.player);
-				cont = square === null;
+					r = cont && (!square || square.player !== piece.player);
+				cont = cont && !square;
 				return r;
 			}).map(function (p) {
 				return ['move', piece.position, p];

@@ -123,8 +123,13 @@ footer {
 	background-size: 100%;
 }
 /* Other square styles. */
-#board table .ludorum-square-move { 
-	background: red url('chess-move.svg');
+#board table .ludorum-square-White-move { 
+	background-image: url('chess-move.svg');
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+#board table .ludorum-square-Black-move { 
+	background-image: url('chess-move.svg');
 	background-repeat: no-repeat;
 	background-size: 100%;
 }
