@@ -22,14 +22,18 @@ define(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludor
 			expect(result[player]).toBeOfType('number');
 			sum += result[player];
 		});
-		options && options.zeroSum && expect(sum).toBe(0);
+		if (options && options.zeroSum) {
+			expect(sum).toBe(0);
+		}
 	}
 	
 	function checkUnfinishedGame(game, options) {
 		var moves = game.moves();
 		expect(moves).toBeTruthy();
 		expect(game.activePlayers).toBeOfType(Array);
-		options && options.oneActivePlayerPerTurn && expect(game.activePlayers.length).toBe(1);
+		if (options && options.oneActivePlayerPerTurn) {
+			expect(game.activePlayers.length).toBe(1);
+		}
 		if (game.activePlayers.length === 1) {
 			expect(game.activePlayer()).toBe(game.activePlayers[0]);
 		} else {
@@ -67,7 +71,6 @@ define(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludor
 				throw new Error('Match of game '+ game.name +' did not end after '+ 
 					MAX_PLIES +' plies (final state: '+ game +')!');
 			}
-			//expect(i).toBeLessThan(MAX_PLIES);
 		});
 	}
 	
@@ -92,5 +95,4 @@ define(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludor
 			itWorksLikeGame(game, options);
 		});
 	});
-	
 }); //// define.

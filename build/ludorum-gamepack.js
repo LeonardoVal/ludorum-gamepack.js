@@ -1524,5 +1524,4 @@ Chess.kinds.Queen = declare(Piece, {
 // See __prologue__.js
 	return exports;
 });
-
 //# sourceMappingURL=ludorum-gamepack.js.map
