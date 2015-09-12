@@ -1,26 +1,29 @@
 ﻿/** Gruntfile for [ludorum-gamepack.js](http://github.com/LeonardoVal/ludorum-gamepack.js).
 */
-var sourceFiles = [ 'src/__prologue__.js',
-	'src/ConnectFour.js',
-	'src/Othello.js',
-	'src/Mancala.js',
-	'src/Colograph.js',
-	'src/Chess.js',
-// end
-	'src/__epilogue__.js'];
-
 module.exports = function(grunt) {
+	var SOURCE_FILES = ['__prologue__',
+		'ConnectFour',
+		'Othello',
+		'Mancala',
+		'Colograph',
+		'Chess',
+	// end
+		'__epilogue__'].map(function (n) {
+			return 'src/'+ n +'.js';
+		});
+
 	grunt.file.defaultEncoding = 'utf8';
 // Init config. ////////////////////////////////////////////////////////////////////////////////////
 	grunt.initConfig({
 		pkg: grunt.file.readJSON('package.json'),
-		concat_sourcemap: { ////////////////////////////////////////////////////////////////////////
+		concat: { //////////////////////////////////////////////////////////////////////////////////
+			options: {
+				separator: '\n\n',
+				sourceMap: true
+			},
 			build: {
-				src: sourceFiles,
-				dest: 'build/<%= pkg.name %>.js',
-				options: {
-					separator: '\n\n'
-				}
+				src: SOURCE_FILES,
+				dest: 'build/<%= pkg.name %>.js'
 			},
 		},
 		jshint: { //////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +32,7 @@ module.exports = function(grunt) {
 					loopfunc: true,
 					boss: true
 				},
-				src: ['build/<%= pkg.name %>.js'],
+				src: ['build/<%= pkg.name %>.js', 'tests/specs/*.js'],
 			},
 		},
 		uglify: { //////////////////////////////////////////////////////////////////////////////////
@@ -67,11 +70,11 @@ module.exports = function(grunt) {
 		}
 	});
 // Load tasks. /////////////////////////////////////////////////////////////////////////////////////
-	grunt.loadNpmTasks('grunt-concat-sourcemap');
-	grunt.loadNpmTasks('grunt-karma');
-	grunt.loadNpmTasks('grunt-contrib-uglify');
-	grunt.loadNpmTasks('grunt-docker');
+	grunt.loadNpmTasks('grunt-contrib-concat');
 	grunt.loadNpmTasks('grunt-contrib-jshint');
+	grunt.loadNpmTasks('grunt-contrib-uglify');
+	grunt.loadNpmTasks('grunt-karma');
+	grunt.loadNpmTasks('grunt-docker');	
 
 // Custom tasks. ///////////////////////////////////////////////////////////////////////////////////
 	grunt.registerTask('test-lib', 'Copies libraries for the testing facilities to use.', function() {
@@ -94,7 +97,7 @@ module.exports = function(grunt) {
 	}); // test-lib
 	
 // Register tasks. /////////////////////////////////////////////////////////////////////////////////
-	grunt.registerTask('compile', ['concat_sourcemap:build', 'jshint:build', 'uglify:build']); 
+	grunt.registerTask('compile', ['concat:build', 'jshint:build', 'uglify:build']); 
 	grunt.registerTask('test', ['compile', 'test-lib', 'karma:build']);
 	grunt.registerTask('test-all', ['test', 'karma:chrome', 'karma:firefox', 'karma:iexplore']);
 	grunt.registerTask('build', ['test', 'docker:build']);
