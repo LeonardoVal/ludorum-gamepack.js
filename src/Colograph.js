@@ -1,39 +1,37 @@
 ﻿/** # Colograph
 
-Implementation of the game Colograph, a competitive version of the classic 
-[graph colouring problem](http://en.wikipedia.org/wiki/Graph_coloring).
+Implementation of the game Colograph, a competitive version of the classic [graph colouring problem](http://en.wikipedia.org/wiki/Graph_coloring).
 */ 	
-games.Colograph = declare(Game, {
+exports.Colograph = declare(Game, {
 	name: 'Colograph',
 	
 	/** The constructor takes the following arguments:
 	*/
 	constructor: function Colograph(args) {
-		/** + `activePlayer`: There is only one active player per turn, and it 
-			is the first player by default.
+		/** + `activePlayer`: There is only one active player per turn, and it is the first player 
+			by default.
 		*/
 		Game.call(this, args ? args.activePlayer : undefined);
 		base.initialize(this, args)
-		/** + `colours`: The colour of each node in the graph is given by an
-			array of integers, each being the node's player index in the players 
-			array, or -1 for uncoloured nodes. By default all nodes are not 
-			coloured, which is the initial game state.
+		/** + `colours`: The colour of each node in the graph is given by an array of integers, each 
+			being the node's player index in the players array, or -1 for uncoloured nodes. By 
+			default all nodes are not coloured, which is the initial game state.
 		*/
 			.object('colours', { defaultValue: {} })
-		/** + `edges`: The edges of the graph are represented by an array of 
-			arrays of integers, acting as an adjacency list. 
+		/** + `edges`: The edges of the graph are represented by an array of arrays of integers, 
+			acting as an adjacency list. 
 		*/
 			.array('edges', { defaultValue: [[1,3],[2],[3],[]] })
-		/** + `shapes`: Each of the graph's nodes can have a certain shape. This
-			is specified by an array of strings, one for each node.
+		/** + `shapes`: Each of the graph's nodes can have a certain shape. This is specified by an 
+			array of strings, one for each node.
 		*/
 			.array('shapes', { defaultValue: ['circle', 'triangle', 'square', 'star'] })
-		/** + `scoreSameShape=-1`: Score added by each coloured edge that binds 
-			two nodes of the same shape.
+		/** + `scoreSameShape=-1`: Score added by each coloured edge that binds two nodes of the 
+			same shape.
 		*/
 			.number('scoreSameShape', { defaultValue: -1, coerce: true })
-		/** + `scoreDifferentShape=-1`: Score added by each coloured edge that 
-			binds two nodes of different shapes.
+		/** + `scoreDifferentShape=-1`: Score added by each coloured edge that binds two nodes of 
+			different shapes.
 		*/
 			.number('scoreDifferentShape', { defaultValue: -1, coerce: true });
 	},
@@ -42,9 +40,8 @@ games.Colograph = declare(Game, {
 	*/
 	players: ['Red', 'Blue'],
 	
-	/** Scores are calculated for each player with the edges of their colour. An 
-	edge connecting two nodes of the same colour is considered to be of that 
-	colour.
+	/** Scores are calculated for each player with the edges of their colour. An edge connecting two
+	nodes of the same colour is considered to be of that colour.
 	*/
 	score: function score() {
 		var points = {},
@@ -67,9 +64,8 @@ games.Colograph = declare(Game, {
 		return points;
 	},
 	
-	/** The game ends when the active player has no moves, i.e. when all nodes
-	in the graph have been coloured. The match is won by the player with the
-	greatest score.
+	/** The game ends when the active player has no moves, i.e. when all nodes in the graph have 
+	been coloured. The match is won by the player with the greatest score.
 	*/
 	result: function result() {
 		if (!this.moves()) { // If the active player cannot move, the game is over.
@@ -94,8 +90,8 @@ games.Colograph = declare(Game, {
 		return uncoloured.length < 1 ? null : obj(this.activePlayer(), uncoloured);
 	},
 
-	/** The result of any move is the colouring of one previously uncoloured 
-	node with the active players's colour.
+	/** The result of any move is the colouring of one previously uncoloured node with the active 
+	players's colour.
 	*/
 	next: function next(moves) {
 		var activePlayer = this.activePlayer(), 
@@ -125,21 +121,29 @@ games.Colograph = declare(Game, {
 		});
 	},
 
-	__serialize__: function __serialize__() {
-		return [this.name, {
-			activePlayer: this.activePlayer(), 
-			colours: this.colours,
-			edges: this.edges,
-			shapes: this.shapes,
-			scoreSameShape: this.scoreSameShape,
-			scoreDifferentShape: this.scoreDifferentShape
-		}];
+	// ## Utility methods ##########################################################################
+	
+	/** Serialization is used in the `toString()` method, but it is also vital for sending the game
+	state across a network or the marshalling between the rendering thread and a webworker.
+	*/
+	'static __SERMAT__': {
+		identifier: 'Colograph',
+		serializer: function serialize_Colograph(obj) {
+			return [{
+				activePlayer: obj.activePlayer(), 
+				colours: obj.colours,
+				edges: obj.edges,
+				shapes: obj.shapes,
+				scoreSameShape: obj.scoreSameShape,
+				scoreDifferentShape: obj.scoreDifferentShape
+			}];
+		}
 	},
 	
-	// ## Game properties. #####################################################
+	// ## Game properties. #########################################################################
 
-	/** `edgeColour(node1, node2)` returns a colour (player index) if the nodes 
-	are joined by an edge, and both have that same colour.
+	/** `edgeColour(node1, node2)` returns a colour (player index) if the nodes are joined by an 
+	edge, and both have that same colour.
 	*/
 	edgeColour: function edgeColour(node1, node2) {
 		var connected = this.edges[node1].indexOf(node2) >= 0 || this.edges[node2].indexOf(node1) >= 0,
@@ -148,14 +152,13 @@ games.Colograph = declare(Game, {
 		return connected && colour1 >= 0 && colour1 === colour2 ? colour1 : -1;
 	},
 	
-	// ## Heuristics. ##########################################################
+	// ## Heuristics. ##############################################################################
 	
-	/** `heuristics` is a namespace for heuristic evaluation functions to be 
-	used with artificial intelligence methods such as Minimax.
+	/** `heuristics` is a namespace for heuristic evaluation functions to be used with artificial 
+	intelligence methods such as Minimax.
 	*/
 	'static heuristics': {
-		/** + `scoreDifference(game, player)` is a simple heuristic that uses
-		the current score.
+		/** + `scoreDifference(game, player)` is a simple heuristic that uses the current score.
 		*/
 		scoreDifference: function scoreDifference(game, player) {
 			var score = game.score(),
@@ -167,11 +170,10 @@ games.Colograph = declare(Game, {
 		}
 	},
 	
-	// ## Graph generation. ####################################################
+	// ## Graph generation. ########################################################################
 
-	/** One of the nice features of this game is the variety that comes from
-	chaning the graph on which the game is played. `randomGraph` can be used to
-	generate graphs to experiment with.
+	/** One of the nice features of this game is the variety that comes from chaning the graph on 
+	which the game is played. `randomGraph` can be used to generate graphs to experiment with.
 	*/
 	'static randomGraph': function randomGraph(nodeCount, edgeCount, random) {
 		nodeCount = Math.max(2, +nodeCount >> 0);
@@ -195,8 +197,7 @@ games.Colograph = declare(Game, {
 		return edges;
 	},
 	
-	/** `randomGame(params)` will generates a random Colograph game with a 
-	random graph.
+	/** `randomGame(params)` will generates a random Colograph game with a random graph.
 	*/
 	'static randomGame': function randomGame(args) {
 		params = base.initialize({}, params)
@@ -215,7 +216,7 @@ games.Colograph = declare(Game, {
 		});
 	},
 	
-	// ## Human interface based on KineticJS. ##################################
+	// ## Human interface based on KineticJS. ######################################################
 	
 	/** This legacy code is an implementation of a UI for Colograph using 
 	[KineticJS](http://kineticjs.com/). Not entirely compatible yet.

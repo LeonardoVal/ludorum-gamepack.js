@@ -2,7 +2,7 @@
 
 Implementation of [Othello (aka Reversi)](http://en.wikipedia.org/wiki/Reversi) for Ludorum.
 */
-games.Othello = declare(Game, {
+exports.Othello = declare(Game, {
 	name: 'Othello',
 
 	/** The constructor takes the `activePlayer` (`"Black"` by default) and a board (initial board 
@@ -187,9 +187,11 @@ games.Othello = declare(Game, {
 	
 	/** The game state serialization simply contains the constructor arguments.
 	*/
-	__serialize__: function __serialize__() {
-		var board = this.board;
-		return [this.name, this.activePlayer(), [board.height, board.width, board.string]];
+	'static __SERMAT__': {
+		identifier: 'Othello',
+		serializer: function serialize_Othello(obj) {
+			return [obj.activePlayer(), [obj.board.height, obj.board.width, obj.board.string]];
+		}
 	},
 	
 	// ## Heuristics ###############################################################################

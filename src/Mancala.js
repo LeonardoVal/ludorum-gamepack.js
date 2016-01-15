@@ -3,7 +3,7 @@
 Implementation of the [Kalah](http://en.wikipedia.org/wiki/Kalah) member of the 
 [Mancala family of games](http://en.wikipedia.org/wiki/Mancala).
 */
-games.Mancala = declare(Game, {
+exports.Mancala = declare(Game, {
 	name: 'Mancala',
 	
 	/** The constructor takes the `activePlayer` (`"North"` by default) and the board as an array of
@@ -186,8 +186,11 @@ games.Mancala = declare(Game, {
 	/** Serialization is used in the `toString()` method, but it is also vital for sending the game
 	state across a network or the marshalling between the rendering thread and a webworker.
 	*/
-	__serialize__: function __serialize__() {
-		return [this.name, this.activePlayer(), this.board.slice()];
+	'static __SERMAT__': {
+		identifier: 'Mancala',
+		serializer: function serialize_Mancala(obj) {
+			return [obj.activePlayer(), obj.board];
+		}
 	},
 
 	identifier: function identifier() {

@@ -23,7 +23,7 @@ var Piece = declare({
 	}
 });
 
-var Chess = games.Chess = declare(Game, {
+var Chess = exports.Chess = declare(Game, {
 	name: 'Chess',
 
 	/** The game is played by two players: White and Black. White moves first.

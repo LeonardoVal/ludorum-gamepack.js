@@ -1,9 +1,9 @@
 ﻿/** # ConnectFour.
 
-Implementation of the [Connect Four game](http://en.wikipedia.org/wiki/Connect_Four), 
-based on [`ConnectionGame`](ConnectionGame.js.html).
+Implementation of the [Connect Four game](http://en.wikipedia.org/wiki/Connect_Four), based on
+Ludorum's `ConnectionGame`.
 */
-games.ConnectFour = declare(games.ConnectionGame, {
+exports.ConnectFour = declare(ludorum.games.ConnectionGame, {
 	name: 'ConnectFour',
 
 	/** The default `height` of the board is 6 ...
@@ -18,13 +18,12 @@ games.ConnectFour = declare(games.ConnectionGame, {
 	*/
 	lineLength: 4,
 	
-	/** The game's players are Yellow and Red, since these are the classic 
-	colours of the pieces.
+	/** The game's players are Yellow and Red, since these are the classic colours of the pieces.
 	*/
 	players: ['Yellow', 'Red'],
 	
-	/** The active players `moves()` are the indexes of every column that has 
-	not reached the top height.
+	/** The active players `moves()` are the indexes of every column that has not reached the top 
+	height.
 	*/
 	moves: function moves() {
 		var result = null;
@@ -45,8 +44,8 @@ games.ConnectFour = declare(games.ConnectionGame, {
 		return result;
 	},
 
-	/** The `next(moves)` game state drops a piece at the column with the index
-	of the active player's move.
+	/** The `next(moves)` game state drops a piece at the column with the index of the active 
+	player's move.
 	*/
 	next: function next(moves) {
 		var activePlayer = this.activePlayer(),
@@ -63,11 +62,11 @@ games.ConnectFour = declare(games.ConnectionGame, {
 		throw new Error('Invalid move '+ JSON.stringify(moves) +'!');
 	},
 	
-	// ## User intefaces #######################################################
+	// ## User intefaces ###########################################################################
 	
-	/** The `display(ui)` method is called by a `UserInterface` to render the
-	game state. The only supported user interface type is `BasicHTMLInterface`.
-	The look can be configured using CSS classes.
+	/** The `display(ui)` method is called by a `UserInterface` to render the game state. The only 
+	supported user interface type is `BasicHTMLInterface`. The look can be configured using CSS 
+	classes.
 	*/
 	display: function display(ui) {
 		raiseIf(!ui || !(ui instanceof UserInterface.BasicHTMLInterface), "Unsupported UI!");
@@ -92,12 +91,14 @@ games.ConnectFour = declare(games.ConnectionGame, {
 		return ui;
 	},
 	
-	// ## Utility methods ######################################################
+	// ## Utility methods ##########################################################################
 	
-	/** The serialization of the game is a representation of a call to its
-	constructor (inherited from [`ConnectionGame`](ConnectionGame.js.html)).
+	/** Serialization is delegated to the serializer of the parent class.
 	*/
-	__serialize__: function __serialize__() {
-		return [this.name, this.activePlayer(), this.board.string];
-	}
+	'static __SERMAT__': {
+		identifier: 'ConnectFour',
+		serializer: function serialize_ConnectFour(obj) {
+			return ludorum.games.ConnectionGame.__SERMAT__.serializer(obj);
+		}
+	},
 }); // declare ConnectFour.
