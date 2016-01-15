@@ -11,7 +11,7 @@
 	},
 	"homepage": "http://creatartis.com",
 	"contributors": [],
-	"licence": "MIT",
+	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "http://github.com/LeonardoVal/ludorum-gamepack.js"
@@ -22,13 +22,15 @@
 		"LICENSE.md"
 	],
 	"dependencies": {
-		"ludorum": ">=0.1.4",
-		"creatartis-base": "~0.1.4"
+		"ludorum": "~0.1.6",
+		"creatartis-base": "~0.1.6",
+		"sermat": "~0.0.6"
 	},
 	"devDependencies": {
 		"requirejs": "~2.1.9",
 		"grunt": "~0.4.4",
 			"grunt-contrib-concat": "~0.5.1",
+			"grunt-contrib-copy": "~0.8.1",
 			"grunt-contrib-uglify": "~0.4.0",
 			"grunt-docker": "~0.0.8",
 			"grunt-bowercopy": "~1.0.0",

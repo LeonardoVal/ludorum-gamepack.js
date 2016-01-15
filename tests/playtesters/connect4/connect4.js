@@ -1,10 +1,12 @@
-﻿var APP = {};
+﻿var APP = {},
+	JS_ROOT = '../../';
 
 require.config({ 
-	paths: { 
-		'creatartis-base': "../../lib/creatartis-base", 
-		'ludorum': "../../lib/ludorum",
-		'ludorum-gamepack': "../../lib/ludorum-gamepack"
+	paths: {
+		'creatartis-base': JS_ROOT +'lib/creatartis-base',
+		'sermat': JS_ROOT +'lib/sermat-umd',
+		'ludorum': JS_ROOT +'lib/ludorum',
+		'ludorum-gamepack': JS_ROOT +'lib/ludorum-gamepack'
 	}
 });
 require(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludorum, ludorum_gamepack) {
@@ -41,7 +43,7 @@ require(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludo
 			if (option.runOnWorker) {
 				return ludorum.players.WebWorkerPlayer.create({
 					playerBuilder: option.builder,
-					workerSetup: new Function('self.ludorum_gamepack = ('+ ludorum_gamepack.__init__ +')(self.base, self.ludorum)')
+					dependencies: [ludorum_gamepack]
 				});
 			} else {
 				return base.Future.when(option.builder());

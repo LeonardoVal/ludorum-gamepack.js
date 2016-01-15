@@ -2,20 +2,20 @@
 */
 (function (global, init) { "use strict"; // Universal Module Definition.
 	if (typeof define === 'function' && define.amd) {
-		define(['creatartis-base'], init); // AMD module.
+		define(['creatartis-base', 'sermat'], init); // AMD module.
 	} else if (typeof module === 'object' && module.exports) {
-		module.exports = init(require('creatartis-base')); // CommonJS module.
+		module.exports = init(require('creatartis-base'), require('sermat')); // CommonJS module.
 	} else { // Browser or web worker (probably).
-		global.ludorum = init(global.base); // Assumes base is loaded.
+		global.ludorum = init(global.base, global.Sermat); // Assumes base is loaded.
 	}
-})(this, function __init__(base) { "use strict";
+})(this, function __init__(base, Sermat) { "use strict";
 // Import synonyms. ////////////////////////////////////////////////////////////////////////////////
-	var declare = base.declare,
-		unimplemented = base.objects.unimplemented,
+	var unimplemented = base.objects.unimplemented,
 		obj = base.obj,
 		copy = base.copy,
 		raise = base.raise,
 		raiseIf = base.raiseIf,
+		declare = base.declare,
 		Iterable = base.Iterable,
 		iterable = base.iterable,
 		Future = base.Future,
@@ -26,16 +26,20 @@
 
 // Library layout. /////////////////////////////////////////////////////////////////////////////////
 	var exports = {
-		__name__: 'ludorum',
-		__init__: __init__,
-		__dependencies__: [base]
-	};
-	
-	/** The namespace `ludorum.utils` contains miscellaneous classes, functions 
-	and definitions.
-	*/
-	var utils = exports.utils = {};
-
+			__package__: 'ludorum',
+			__name__: 'ludorum',
+			__init__: __init__,
+			__dependencies__: [base, Sermat],
+			__SERMAT__: { include: [base] }
+		},
+		/** The library is organized in the following _namespaces_.
+		*/
+		aleatories = exports.aleatories = {},
+		games = exports.games = {},
+		players = exports.players =  {},
+		tournaments = exports.tournaments = {},
+		utils = exports.utils = {}
+	;
 
 /** # Game
 
@@ -68,18 +72,18 @@ var Game = exports.Game = declare({
 		
 	If the game has finished then a _falsy_ value must be returned (`null` is recommended).
 	*/
-	moves: unimplemented("Game", "moves"),
+	moves: unimplemented("Game", "moves()"),
 
-	/** Once the players have chosen their moves, the method `next(moves)` is used to perform the 
-	given moves. It returns a new game instance with the resulting state. The moves object should 
-	have a move for each active player. For example:
+	/** Once the players have chosen their moves, the method `next` is used to perform the given 
+	moves. It returns a new game instance with the resulting state. The first `moves` argument 
+	should be an object with a move for each active player. For example:
 
 	+ `{ Player1: 'Rock', Player2: 'Paper' }`
 	
 	There isn't a default implementation, so it must be overriden. It is strongly advised to check 
-	if the moves argument has valid moves.
+	if the arguments are valid.
 	*/
-	next: unimplemented("Game", "next"),
+	next: unimplemented("Game", "next(moves)"),
 
 	/** If the game is finished the result of the game is calculated with `result()`. It returns an 
 	object with every player in the game related to a number. This number must be positive if the 
@@ -89,7 +93,7 @@ var Game = exports.Game = declare({
 	
 	If the game is not finished, this function must return a _falsy_ value (`null` is recommended).
 	*/
-	result: unimplemented("Game", "result"),
+	result: unimplemented("Game", "result()"),
 
 	/** Some games may assign scores to the players in a finished game. This may differ from the
 	result, since the score sign doesn't have to indicate victory or defeat. For example:
@@ -136,8 +140,8 @@ var Game = exports.Game = declare({
 	*/
 	activePlayer: function activePlayer() {
 		var len = this.activePlayers.length;
-		raiseIf(len < 1, 'There is no active player.');
-		raiseIf(len > 1, 'More than one player is active.');
+		raiseIf(len < 1, 'There are no active players!');
+		raiseIf(len > 1, 'More than one player is active!');
 		return this.activePlayers[0];
 	},
 
@@ -167,7 +171,7 @@ var Game = exports.Game = declare({
 	(activePlayer by default) and returns the next game state.
 	*/
 	perform: function perform() {
-		var moves = {}, move, player;
+		var moves = {}, player;
 		for (var i = 0; i < arguments.length; i += 2) {
 			player = arguments[i + 1];
 			if (typeof player === 'undefined') {
@@ -289,65 +293,24 @@ var Game = exports.Game = declare({
 
 	// ## Conversions & presentations ##############################################################
 
-	/** Many methods are based in the serialization of the game instances. The abstract method 
-	`__serialize__()` should returns an array, where the first element should be the name of the 
-	game, and the rest are the arguments to call the game's constructor in order to rebuild this 
-	game's state.
-	*/
-	__serialize__: unimplemented("Game", "__serialize__"),
-	
-	/** Based on the game's serialization, `clone()` creates a copy of this game state.
-	*/
-	clone: function clone() {
-		var args = this.__serialize__();
-		args.shift(); // Remove first element (game's name).
-		return new (this.constructor.bind.apply(this.constructor, args))();
-	},
-
 	/** Some algorithms require an `identifier()` for each game state, in order to store them in 
 	caches or hashes. This method calculates a string that uniquely identifies this game state,
 	based on the game's serialization.
 	*/
 	identifier: unimplemented("Game", "identifier"),
 
-	/** The default string representation of a game is also based on the serialization. Changing
-	this is not recommended.
+	/** Based on the game's serialization, `clone()` creates a copy of this game state.
+	*/
+	clone: function clone() {
+		return Sermat.sermat(this);
+	},
+
+	/** The default string representation of a game is equal to the result of `toJSON`.
 	*/
 	toString: function toString() {
-		var args = this.__serialize__();
-		return args.shift() +'('+ args.map(JSON.stringify).join(',') +')';
+		return Sermat.ser(this);
 	},
-	
-	/** The default JSON representation (i.e. `toJSON()`) is a straight JSON stringification of the
-	serialization. It may be used to transfer the game state between server and client, frames or
-	workers.
-	*/
-	toJSON: function toJSON() {
-		return JSON.stringify(this.__serialize__());
-	},
-	
-	/** The static counterpart of `toJSON()` is `fromJSON()`, which creates a new instance of this
-	game from the given JSON. The function in `Game` abstract class finds the proper constructor
-	with the game name and calls it.
-	*/
-	"static fromJSON": function fromJSON(data) {
-		if (typeof data === 'string') {
-			data = JSON.parse(data);
-			raiseIf(!Array.isArray(data) || data.length < 1, "Invalid JSON data: "+ data +"!");
-		} else {
-			raiseIf(!Array.isArray(data) || data.length < 1, "Invalid JSON data: "+ data +"!");
-			data = data.slice(); // Shallow copy.
-		}
-		var cons = games[data[0]];
-		raiseIf(typeof cons !== 'function', "Unknown game '", data[0], "'!");
-		if (typeof cons.fromJSON === 'function') {
-			return cons.fromJSON(data); // Call game's fromJSON.
-		} else { // Call game's constructor.
-			data[0] = this; 
-			return new (cons.bind.apply(cons, data))();
-		}
-	},
-	
+		
 	/** ## Cached games ############################################################################
 
 	A `cached(game)` has modified `moves()` and `result()` methods that cache the calls of the base
@@ -432,24 +395,16 @@ var Game = exports.Game = declare({
 	} // static serialized
 	
 }); // declare Game.
-	
-/** ## Games namespace #############################################################################
-
-The namespace `ludorum.games` contains all game implementations (as `Game` subclasses) provided by
-this library.
-*/
-var games = exports.games = {};
 
 
 /** # Player
 
-Player is the base type for all playing agents. Basically, playing a game means
-choosing a move from all available ones, each time the game enables the player 
-to do so.
+Player is the base type for all playing agents. Basically, playing a game means choosing a move from 
+all available ones, each time the game enables the player to do so.
 */
 var Player = exports.Player = declare({
-	/** The default constructor takes only its `name` from the given `params`.
-	This is an abstract class that is meant to be extended.
+	/** The default constructor takes only its `name` from the given `params`. This is an abstract 
+	class that is meant to be extended.
 	*/
 	constructor: (function () {
 		var __PlayerCount__ = 0; // Used by the Player's default naming.
@@ -459,17 +414,15 @@ var Player = exports.Player = declare({
 		};
 	})(),
 
-	/** A player is asked to choose a move by calling 
-	`Player.decision(game, role)`. The result is the selected move if it can be 
-	obtained synchronously, else a future is returned.
+	/** A player is asked to choose a move by calling `Player.decision(game, role)`. The result is 
+	the selected move if it can be obtained synchronously, else a future is returned.
 	*/
 	decision: function decision(game, role) {
 		return this.movesFor(game, role)[0]; // Indeed not a very thoughtful base implementation. 
 	},
 
-	/** To help implement the decision, `Player.movesFor(game, player)` gets
-	the moves in the game for the player. It also checks if there are any moves,
-	and if it not so an error is risen.
+	/** To help implement the decision, `Player.movesFor(game, player)` gets the moves in the game 
+	for the player. It also checks if there are any moves, and if it not so an error is risen.
 	*/
 	movesFor: function movesFor(game, role) {
 		var moves = game.moves();
@@ -478,52 +431,43 @@ var Player = exports.Player = declare({
 		return moves[role];
 	},
 	
-	/** Before starting a [match](Match.js.html), all players are asked to join
-	by calling `Player.participate(match, role)`. This allows the player to
-	prepare properly. If this implies building another instance of the player 
-	object, it must be returned in order to participate in the match.
+	/** Before starting a [match](Match.js.html), all players are asked to join by calling 
+	`Player.participate(match, role)`. This allows the player to prepare properly. If this implies 
+	building another instance of the player object, it must be returned in order to participate in 
+	the match.
 	*/
 	participate: function participate(match, role) {
 		return this;
 	},
 	
-	// ## Conversions & presentations #########################################
-
-	/** Players can also be serialized, pretty much in the same way 
-	[games](Game.html) are. `Player.__serialize__()` returns an array, where the 
-	first element should be the name of the game, and the rest the arguments to 
-	call the player's constructor in order to rebuild this player's state.
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
 	*/
-	__serialize__: function __serialize__() {
-		return [this.constructor.name, {name: this.name}];
+	'static __SERMAT__': {
+		identifier: 'Player',
+		serializer: function serialize_Player(obj) {
+			return this.serializeAsProperties(obj, ['name']);
+		}
 	},
 	
-	/** The string representation of the player is derived straight from its
-	serialization.
+	/** The string representation of the player is derived straight from its serialization.
 	*/
 	toString: function toString() {
-		var args = this.__serialize__();
-		return args.shift() +'('+ args.map(JSON.stringify).join(',') +')';
+		return Sermat.ser(this);
 	}
 }); // declare Player.
 
-/** ## Players namespace
-
-The namespace `ludorum.players` contains all kinds of players provided by
-this library: artificial intelligences, user interface proxies and others.
-*/
-var players = exports.players = {};
 
 /** # Match
 
-A match is a controller for a game, managing player decisions, handling the flow
-of the turns between the players by following the game's logic.
+A match is a controller for a game, managing player decisions, handling the flow of the turns 
+between the players by following the game's logic.
 */
 var Match = exports.Match = declare({
-	/** `Match` objects are build with the [game's](Game.html) starting state 
-	and the players that participate. The players argument must be either an 
-	array of [`Player`](Player.html) objects or an object with a member for each
-	of the game's players with a Player object as value.
+	/** `Match` objects are build with the [game's](Game.html) starting state and the players that 
+	participate. The players argument must be either an array of [`Player`](Player.html) objects or 
+	an object with a member for each of the game's players with a Player object as value.
 	*/
 	constructor: function Match(game, players) {
 		this.game = game;
@@ -539,33 +483,31 @@ var Match = exports.Match = declare({
 		}
 	},
 
-	/** Each step in the match's history is called a ply. `Match.ply()` 
-	indicates the current ply number.
+	/** Each step in the match's history is called a ply. `Match.ply()` indicates the current ply 
+	number.
 	*/
 	ply: function ply() {
 		return this.history.length - 1;
 	},
 	
-	/** Each ply has a game state. `Match.state(ply=last)` retrieves the game 
-	state for the given ply, or the last one by default.
+	/** Each ply has a game state. `Match.state(ply=last)` retrieves the game state for the given 
+	ply, or the last one by default.
 	*/
 	state: function state(ply) {
 		ply = isNaN(ply) ? this.ply() : +ply < 0 ? this.ply() + (+ply) : +ply;
 		return this.history[ply | 0];
 	},
 
-	/** If the last game state is finished, then the whole match is finished. If
-	so, `Match.result()` returns the match result, which is the result of the 
-	last game state.
+	/** If the last game state is finished, then the whole match is finished. If so, 
+	`Match.result()` returns the match result, which is the result of the last game state.
 	*/
 	result: function result() {
 		return this.state().result();
 	},
 
-	/** If the last game state is not finished, then the match continues. To
-	move the play on, `Match.decisions(game=state())` asks the active players in 
-	the game to choose their moves. Returns a future that is resolved when all 
-	players have decided.
+	/** If the last game state is not finished, then the match continues. To move the play on, 
+	`Match.decisions(game=state())` asks the active players in the game to choose their moves. 
+	Returns a future that is resolved when all players have decided.
 	*/
 	decisions: function decisions(game) {
 		game = game || this.state();
@@ -581,9 +523,8 @@ var Match = exports.Match = declare({
 		});
 	},
 
-	/** `Match.run(plys=Infinity)` runs the match the given number of plys, or 
-	until the game finishes. The result is a future that gets resolved when the
-	game ends.
+	/** `Match.run(plys=Infinity)` runs the match the given number of plys, or until the game 
+	finishes. The result is a future that gets resolved when the game ends.
 	*/
 	run: function run(plys) {
 		plys = isNaN(plys) ? Infinity : +plys;
@@ -594,7 +535,7 @@ var Match = exports.Match = declare({
 		if (ply < 1) {
 			this.onBegin(game);
 		}
-		game = this.__advanceAleatories__(game); // Instantiate all random variables.
+		game = this.__advanceContingents__(game); // Remove all non-determinism.
 		results = game.result();
 		if (results) { // If the match has finished ...
 			this.onEnd(game, results);
@@ -611,9 +552,9 @@ var Match = exports.Match = declare({
 		}
 	},
 	
-	__advanceAleatories__: function __advanceAleatories__(game, moves) {
-		for (var next; game instanceof Aleatory; game = next) {
-			next = game.next();
+	__advanceContingents__: function __advanceContingents__(game, moves) {
+		for (var next; game.isContingent; game = next) {
+			next = game.randomNext();
 			this.history.push(next);
 			this.onNext(game, next);
 		}
@@ -622,11 +563,11 @@ var Match = exports.Match = declare({
 	
 	__advance__: function __advance__(game, moves) {
 		var match = this,
-			quitters = game.activePlayers.filter(function (p) {
-				return moves[p] instanceof Match.CommandQuit;
+			abortMatch = !iterable(game.activePlayers).all(function (player) {
+				var move = moves[player];
+				return typeof move.__command__ !== 'function' || move.__command__(match, player);
 			});
-		if (quitters.length > 0) {
-			match.onQuit(game, quitters[0]);
+		if (abortMatch) {
 			return false;
 		}
 		var next = game.next(moves); // Match must go on.
@@ -635,28 +576,33 @@ var Match = exports.Match = declare({
 		return true;
 	},
 	
-	/** ## Commands ###########################################################
+	/** ## Commands ################################################################################
 	
-	Commands are pseudo-moves, which can be returned by the players instead of
-	valid moves for the game being played. Their intent is to control the match
-	itself.
+	Commands are pseudo-moves, which can be returned by the players instead of valid moves for the 
+	game being played. Their intent is to control the match itself.
 	
 	The available commands are:
 	*/
+	"static commands": {
+		/** + `Quit`: A quit command means the player that issued it is leaving the match. The match 
+		is then aborted.
+		*/
+		Quit: declare({
+			__command__: function __command__(match, player) {
+				match.onQuit(match.state(), player);
+				return false;
+			}
+		})
+	},
 	
-	/** + `CommandQuit()`: A quit command means the player that issued it is 
-	leaving the match. The match is then aborted.
+	/** ## Events ##################################################################################
+	
+	Matches provide game events that players and spectators can be registered to. `Match.events` is 
+	the event handler. Emitted events are:
 	*/
-	"static CommandQuit": function CommandQuit() { },
 	
-	/** ## Events #############################################################
-	
-	Matches provide game events that players and spectators can be registered 
-	to. `Match.events` is the event handler. Emitted events are:
-	*/
-	
-	/** + The `begin` event fired by `Match.onBegin(game)` when the match 
-	begins. The callbacks should have the signature `function (game, match)`.
+	/** + The `begin` event fired by `Match.onBegin(game)` when the match begins. The callbacks 
+	should have the signature `function (game, match)`.
 	*/
 	onBegin: function onBegin(game) {
 		this.events.emit('begin', game, this);
@@ -667,9 +613,8 @@ var Match = exports.Match = declare({
 		}
 	},
 	
-	/** + The `move` event fired by `Match.onMove(game, moves)` every time the
-	active players make moves. The callbacks should have the signature 
-	`function (game, moves, match)`.
+	/** + The `move` event fired by `Match.onMove(game, moves)` every time the active players make 
+	moves. The callbacks should have the signature `function (game, moves, match)`.
 	*/
 	onMove: function onMove(game, moves) {
 		this.events.emit('move', game, moves, this);
@@ -678,10 +623,9 @@ var Match = exports.Match = declare({
 		}
 	},
 	
-	/** + The `next` event fired by `Match.onNext(game, next)` signals when the
-	match advances to the next game state. This may be due to moves or aleatory
-	instantiation.  The callbacks should have the signature 
-	`function (gameBefore, gameAfter, match)`.
+	/** + The `next` event fired by `Match.onNext(game, next)` signals when the match advances to 
+	the next game state. This may be due to moves or aleatory instantiation.  The callbacks should 
+	have the signature `function (gameBefore, gameAfter, match)`.
 	*/
 	onNext: function onNext(game, next) {
 		this.events.emit('next', game, next, this);
@@ -690,9 +634,8 @@ var Match = exports.Match = declare({
 		}
 	},
 	
-	/** + The `end` event triggered by `Match.onEnd(game, results)` notifies 
-	when the match ends.  The callbacks should have the signature 
-	`function (game, result, match)`.
+	/** + The `end` event triggered by `Match.onEnd(game, results)` notifies when the match ends. 
+	The callbacks should have the signature `function (game, result, match)`.
 	*/
 	onEnd: function onEnd(game, results) {
 		this.events.emit('end', game, results, this);
@@ -701,9 +644,9 @@ var Match = exports.Match = declare({
 		}
 	},
 	
-	/** + The `quit` event triggered by `Match.onQuit(game, player)` is emitted
-	when the match is aborted due to the given player leaving it. The callbacks 
-	should have the signature `function (game, quitter, match)`.
+	/** + The `quit` event triggered by `Match.onQuit(game, player)` is emitted when the match is 
+	aborted due to the given player leaving it. The callbacks should have the signature 
+	`function (game, quitter, match)`.
 	*/
 	onQuit: function onQuit(game, player) {
 		this.events.emit('quit', game, player, this);
@@ -712,11 +655,127 @@ var Match = exports.Match = declare({
 		}
 	},
 	
+	// ## Utilities ################################################################################
+	
 	toString: function toString() {
 		return 'Match('+ this.game +', '+ JSON.stringify(this.players) +')';
+	},
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'Match',
+		serializer: function serialize_Match(obj) {
+			return [obj.game, obj.players, obj.history];
+		},
+		materializer: function materialize_Match(obj, args) {
+			if (args) {
+				var match = new Match(args[0], args[1]);
+				match.history = args[2];
+				return match;
+			} else {
+				return null;
+			}
+		}
 	}
 }); // declare Match.
 
+
+/** # Contingent
+
+Contingent states are game states that depend on other factors that the players choices. They are
+used to represent randomness in non-deterministic games. The random variables (called `haps`) can
+be dice, card decks, roulettes, etc.
+*/
+var Contingent = exports.Contingent = declare({
+	/** Flag to distinguish contingent states from normal game states.
+	*/
+	isContingent: true,
+	
+	/** The default implementation takes a set of `haps`, a game `state` and a set of `moves`. See
+	the `next` method for further details.
+	*/
+	constructor: function Contingent(haps, state, moves) {
+		if (haps) {
+			this.__haps__ = haps;
+		}
+		if (state) {
+			this.__state__ = state;
+		}
+		if (moves) {
+			this.__moves__ = moves;
+		}
+	},
+	
+	/** A contingent state's `haps` are the equivalent of `moves` in normal game states. The method 
+	returns an object with the random variables on which this node depends, e.g.: 
+	`{ die: aleatories.dice.D6 }`.
+	*/
+	haps: function haps() {
+		return this.__haps__;
+	},
+	
+	/** Contingent game states' `next` states depend on the `haps` provided, e.g. `{die1: 4, die2: 2}`.
+	If values for the `haps` are not provided, they are resolved randonmly (using `randomHaps()`).
+	
+	By default this method can have two possible behaviours. If the contingent state was created 
+	with `moves`, the previous `state`'s `next` method is called with these `moves` and the `haps`.
+	Else, it is assumed that the game state constructor will deal with the haps. So it is called
+	with the original arguments of the state and the `haps`.
+	*/
+	next: function next(haps) {
+		var state = this.__state__;
+		if (this.__moves__) {
+			return state.next(this.__moves__, haps || this.randomHaps());
+		} else {
+			var sermatRecord = Sermat.record(state.constructor),
+				args = sermatRecord.serializer(state)[0];
+			return sermatRecord.materializer(null, [copy(haps, args)]);
+		}
+	},
+	
+	/** Method `randomHaps` calculates a random set of haps.
+	*/
+	randomHaps: function randomHaps(random) {
+		return iterable(this.haps()).mapApply(function (n, h) {
+			return [n, h.value(random)];
+		}).toObject();
+	},
+	
+	/** A `randomNext` picks one of the next states at random.
+	*/
+	randomNext: function randomNext(random) {
+		return this.next(this.randomHaps(random));
+	},
+	
+	/** The method `possibleHaps` is analogous to `Game.possibleMoves`. It calculates all possible 
+	combinations of haps.
+	*/
+	possibleHaps: function possibleHaps() {
+		return Iterable.product.apply(Iterable,
+			iterable(this.haps()).mapApply(function (n, hap) {
+				return hap.distribution().mapApply(function (v, p) {
+					return [n, v, p];
+				});
+			}).toArray()
+		).map(function (haps) {
+			var prob = 1;
+			return [iterable(haps).mapApply(function (n, v, p) {
+				prob *= p;
+				return [n, v];
+			}).toObject(), prob];
+		}).toArray();
+	},
+	
+	// ## Utilities ################################################################################
+	
+	'static __SERMAT__': {
+		identifier: 'Contingent',
+		serializer: function serialize_Contingent(obj) {
+			return [obj.__haps__ || null, obj.__state__ || null, obj.__moves__ || null];
+		}
+	}
+});
 
 /** # Tournament
 
@@ -864,165 +923,6 @@ var Tournament = exports.Tournament = declare({
 		}
 	}
 }); // declare Tournament
-
-/** ## Tournament namespace
-
-The namespace `ludorum.tournaments` holds several contest types implemented 
-as Tournament subtypes.
-*/
-var tournaments = exports.tournaments = {};
-
-/** # Aleatory
-
-Aleatories are representations of intermediate game states that depend on some 
-form of randomness. `Aleatory` is an abstract class from which different means
-of non determinism can be build, like: dice, card decks, roulettes, etcetera.
-*/
-var Aleatory = exports.Aleatory = declare({
-	/** The constructor may take a next function and a random generator (an
-	instance of `creatartis-base.Randomness`).
-	*/
-	constructor: function Aleatory(next, random) {
-		this.random = random || Randomness.DEFAULT;
-		if (typeof next === 'function') {
-			this.next = next;
-		}
-	},
-	
-	/** The aleatory is always related to a random variable of some sort. The
-	`Aleatory.value()` can be used to obtain a valid random value for that 
-	random variable.
-	*/
-	value: function value() {
-		var n = this.random.random(), v;
-		iterable(this.distribution()).forEach(function (pair) {
-			n -= pair[1];
-			if (n <= 0) {
-				v = pair[0];
-				throw Iterable.STOP_ITERATION;
-			}
-		});
-		if (typeof v === 'undefined') {
-			throw new Error("Random value could not be obtained.");
-		}
-		return v;
-	},
-	
-	/** The function `Aleatory.next(value)` returns the next game state given a specific value for 
-	the random variable. This next game state may also be another `Aleatory`, or the corresponding 
-	[`Game`](Game.html) instance. If no value is given, then a random valid value is chosen, using 
-	the `Aleatory.random` randomness generator.
-	*/
-	next: unimplemented("Aleatory", "next"),
-	
-	/** In order to properly search a game tree with aleatory nodes, the random variables' 
-	distribution have to be known. `Aleatory.distribution()` computes the histogram for the random 
-	variables on which this aleatory depends, as a sequence of pairs `[value, probability]`.
-	*/
-	distribution: unimplemented("Aleatory", "distribution"),
-	
-	/** ## Generic constructors ####################################################################
-	
-	The following methods are meant to simplify defining common aleatory variables:
-	*/
-	
-	/**	+ `fromDistribution` builds an `Aleatory` instance that uses the given distribution.
-	*/
-	'static fromDistribution': function fromDistribution(dist, next, random) {
-		var alea = new Aleatory(next, random);
-		alea.distribution = function distribution() {
-			return dist;
-		};
-		return alea;
-	},
-	
-	/**	+ `withDistribution` returns a constructor for aleatories that use the given ditribution.
-	*/
-	'static withDistribution': function withDistribution(dist) {
-		return declare(Aleatory, {
-			distribution: function distribution() {
-				return dist;
-			},
-		});
-	},
-	
-	/** + `fromValues` builds an `Aleatory` instance that uses the given values, assuming all have 
-	equal probabilities.
-	*/
-	'static fromValues': function fromValues(values, next, random) {
-		values = iterable(values).toArray();
-		var prob = 1 / values.length,
-			alea = new Aleatory(next, random);
-		alea.value = function value() {
-			return this.random.choice(values);
-		};
-		alea.distribution = function distribution() {
-			return values.map(function (value) {
-				return [value, prob];
-			});
-		};
-		return alea;
-	},
-	
-	/** + `withValues` returns an `Aleatory` constructor for aleatories that use the given a list of 
-	values, assuming all these values have equal probabilities.
-	*/
-	'static withValues': function withValues(values) {
-		values = iterable(values).toArray();
-		var prob = 1 / values.length;
-		return declare(Aleatory, {
-			value: function value() {
-				return this.random.choice(values);
-			},
-		
-			distribution: function distribution() {
-				return values.map(function (value) {
-					return [value, prob];
-				});
-			}
-		});
-	},
-	
-	/**	+ `fromRange` returns an aleatory that ranges over all integers between `min` and `max`
-	(inclusively).
-	*/
-	'static fromRange': function fromRange(min, max, next, random) {
-		var alea = new Aleatory(next, random);
-		alea.value = function value() {
-			return this.random.randomInt(min, max + 1);
-		};
-		alea.distribution = function distribution() {
-			return Iterable.range(min, max + 1).map(function (value) {
-				return [value, 1 / (max + 1 - min)];
-			});
-		};
-		return alea;
-	},
-	
-	/**	+ `withRange` returns a uniform aleatory constructor ranging over all integers between `min`
-	and `max` (inclusively).
-	*/
-	'static withRange': function withRange(min, max) {
-		return declare(Aleatory, {
-			value: function value() {
-				return this.random.randomInt(min, max + 1);
-			},
-			
-			distribution: function distribution() {
-				return Iterable.range(min, max + 1).map(function (value) {
-					return [value, 1 / (max + 1 - min)];
-				});
-			}
-		});
-	}
-}); // declare Aleatory.
-
-/** ## Aleatories namespace
-
-The namespace `ludorum.aleatories` is a bundle of random game states (i.e. 
-Aleatory subclasses) and related definitions.
-*/
-var aleatories = exports.aleatories = { };
 
 
 /** # Checkerboard
@@ -1370,17 +1270,17 @@ var Checkerboard = utils.Checkerboard = declare({
 
 /** # CheckerboardFromString
 
-[`Checkerboard`](Checkerboard.html) implementation represented by a simple 
-string (one character per square).
+[`Checkerboard`](Checkerboard.html) implementation represented by a simple string (one character per 
+square).
 */
 var CheckerboardFromString = utils.CheckerboardFromString = declare(Checkerboard, {
-	/** The constructor takes `height`, `width`, the whole board content in a 
-	`string`, and optionally the empty square character.
+	/** The constructor takes `height`, `width`, the whole board content in a `string`, and 
+	optionally the empty square character.
 	*/
 	constructor: function CheckerboardFromString(height, width, string, emptySquare) {
 		Checkerboard.call(this, height, width);
-		if (emptySquare) {
-			this.emptySquare = (emptySquare + this.emptySquare).charAt(0);
+		if (emptySquare && emptySquare !== this.emptySquare) {
+			this.emptySquare = (emptySquare +'').charAt(0);
 		}
 		if (string && string.length !== height * width) {
 			throw new Error('Given string '+ JSON.stringify(string) +' does not match board dimensions.');
@@ -1392,8 +1292,8 @@ var CheckerboardFromString = utils.CheckerboardFromString = declare(Checkerboard
 	*/
 	emptySquare: '.',	
 	
-	/** The default string conversion of `CheckerboardFromString` prints the 
-	board one line by row, last row on top.
+	/** The default string conversion of `CheckerboardFromString` prints the board one line by row, 
+	last row on top.
 	*/
 	toString: function toString() {
 		var string = this.string, height = this.height, width = this.width;
@@ -1402,10 +1302,10 @@ var CheckerboardFromString = utils.CheckerboardFromString = declare(Checkerboard
 		}).join('\n');
 	},
 	
-	// ## Board information ####################################################
+	// ## Board information ########################################################################
 	
-	/** The `square(coord, outside)` return the character at `(row * width + 
-	column)` if the coordinate is inside the board. Else returns `outside`.
+	/** The `square(coord, outside)` return the character at `(row * width + column)` if the 
+	coordinate is inside the board. Else returns `outside`.
 	*/
 	square: function square(coord, outside) {
 		var row = coord[0], 
@@ -1418,12 +1318,11 @@ var CheckerboardFromString = utils.CheckerboardFromString = declare(Checkerboard
 		}
 	},
 	
-	// ### Lines ###############################################################
+	// ### Lines ###################################################################################
 	
-	/** Since square contents in `CheckerboardFromString` are just characters,
-	lines can be thought as strings. The method `asString(line)` takes an
-	iterable of coordinates and returns a string of the characters found at each
-	point in the sequence.
+	/** Since square contents in `CheckerboardFromString` are just characters, lines can be thought 
+	as strings. The method `asString(line)` takes an iterable of coordinates and returns a string of 
+	the characters found at each point in the sequence.
 	*/
 	asString: function asString(line) {
 		var board = this;
@@ -1432,8 +1331,8 @@ var CheckerboardFromString = utils.CheckerboardFromString = declare(Checkerboard
 		}).join('');
 	},
 	
-	/** The method `asStrings(lines)` can be used to easily map `asString(line)`
-	to a sequence of lines, like the one calculated by `lines()`.
+	/** The method `asStrings(lines)` can be used to easily map `asString(line)` to a sequence of 
+	lines, like the one calculated by `lines()`.
 	*/
 	asStrings: function asStrings(lines) {
 		var board = this;
@@ -1442,15 +1341,14 @@ var CheckerboardFromString = utils.CheckerboardFromString = declare(Checkerboard
 		});
 	},
 	
-	/** Many games based on board configurations (like connection games) have 
-	patterns that can be expressed with regular expressions. The method 
-	`asRegExp(line, insideLine, outsideLine)` takes a line (iterable of 
-	coordinates) and returns a string with a regular expression. This may be 
-	used to tests the whole board string for the line.
+	/** Many games based on board configurations (like connection games) have patterns that can be 
+	expressed with regular expressions. The method `asRegExp(line, insideLine, outsideLine)` takes a 
+	line (iterable of coordinates) and returns a string with a regular expression. This may be used 
+	to tests the whole board string for the line.
 	
-	_Warning!_ Both `insideLine` and `outsideLine` must be simple regular 
-	expressions (e.g. a character or atom). If more complex expressions are
-	required they must be provided between parenthesis.
+	_Warning!_ Both `insideLine` and `outsideLine` must be simple regular expressions (e.g. a 
+	character or atom). If more complex expressions are required they must be provided between 
+	parenthesis.
 	*/
 	asRegExp: function asRegExp(line, insideLine, outsideLine) {
 		outsideLine = outsideLine || '.';
@@ -1474,10 +1372,9 @@ var CheckerboardFromString = utils.CheckerboardFromString = declare(Checkerboard
 		return result;
 	},
 	
-	/** The method `asRegExps(lines)` can be used to easily map `asRegExp(line)`
-	to a sequence of lines. All regular expressions are joined as a union (`|`).
-	Use with caution, because the whole regular expression can get very big even
-	with small boards.
+	/** The method `asRegExps(lines)` can be used to easily map `asRegExp(line)` to a sequence of 
+	lines. All regular expressions are joined as a union (`|`). Use with caution, because the whole 
+	regular expression can get very big even with small boards.
 	*/
 	asRegExps: function asRegExps(lines, insideLine, outsideLine) {
 		var board = this;
@@ -1486,19 +1383,18 @@ var CheckerboardFromString = utils.CheckerboardFromString = declare(Checkerboard
 		}).join('|');
 	},
 	
-	// ## Board modification ###################################################
+	// ## Board modification #######################################################################
 	
-	/** Cloning a CheckerboardFromString simply calls the constructor again
-	with the proper arguments to replicate this instance.
+	/** Cloning a CheckerboardFromString simply calls the constructor again with the proper 
+	arguments to replicate this instance.
 	*/
 	clone: function clone() {
 		return new this.constructor(this.height, this.width, this.string, 
 			this.hasOwnProperty('emptySquare') ? this.emptySquare : undefined);
 	},
 	
-	/** A `place(coord, value)` means only changing one character in the
-	underlying string. The `value` must be a character, and `coord` a point
-	inside the board.
+	/** A `place(coord, value)` means only changing one character in the underlying string. The 
+	`value` must be a character, and `coord` a point inside the board.
 	*/
 	__place__: function __place__(coord, value) {
 		raiseIf(!this.isValidCoord(coord), "Invalid coordinate ", coord, ".");
@@ -1506,9 +1402,23 @@ var CheckerboardFromString = utils.CheckerboardFromString = declare(Checkerboard
 		var i = coord[0] * this.width + coord[1];
 		this.string = this.string.substr(0, i) + value + this.string.substr(i + 1);
 		return this;
+	},
+	
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'CheckerboardFromString',
+		serializer: function serialize_CheckerboardFromString(obj) {
+			var r = [obj.height, obj.width, obj.string];
+			if (obj.hasOwnProperty('emptySquare')) {
+				r.push(obj.emptySquare);
+			}
+			return r;
+		}
 	}
 }); // declare utils.CheckerboardFromString
-
 
 /** # Checkerboard from pieces
 
@@ -1579,6 +1489,21 @@ var CheckerboardFromPieces = utils.CheckerboardFromPieces = declare(Checkerboard
 			this.pieces[id] = value;
 		}
 		return this;
+	},
+	
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'CheckerboardFromPieces',
+		serializer: function serialize_CheckerboardFromPieces(obj) {
+			var r = [obj.height, obj.width, obj.pieces];
+			if (obj.hasOwnProperty('emptySquare')) {
+				r.push(obj.emptySquare);
+			}
+			return r;
+		}
 	}
 }); // declare utils.CheckerboardFromPieces
 
@@ -1904,7 +1829,7 @@ var GameTree = declare({
 			child = this.children[key], nextState;
 		if (!child) {
 			try {
-				nextState = this.state.next(transition); // Whether state is an instance of Game or Aleatory.
+				nextState = this.state.next(transition); 
 			} catch (err) {
 				raise("Node expansion for ", this.state, " with ", JSON.stringify(transition),
 					" failed with: ", err);
@@ -1919,12 +1844,11 @@ var GameTree = declare({
 	the state is an instance of Aleatory.
 	*/
 	possibleTransitions: function possibleTransitions() {
-		if (this.state instanceof Aleatory) {
-			return this.state.distribution();
-		} else if (this.state instanceof Game) {
-			return this.state.possibleMoves();
+		var state = this.state;
+		if (state.isContingent) {
+			return state.possibleHaps();
 		} else {
-			raise("Cannot get possible transitions from ("+ this.state +")! Is it a Game or Aleatory?");
+			return state.possibleMoves();
 		}
 	},
 	
@@ -1933,7 +1857,8 @@ var GameTree = declare({
 	expandAll: function expandAll() {
 		var node = this;
 		return this.possibleTransitions().map(function (transition) {
-			return node.expand(transition);
+			return node.expand(// An array as transition means it belongs to a contingent state
+				Array.isArray(transition) ? transition[0] : transition);
 		});
 	}
 }); // declare GameTree
@@ -1943,8 +1868,8 @@ var GameTree = declare({
 Automatic players that moves fully randomly.
 */	
 players.RandomPlayer = declare(Player, {
-	/** The constructor takes the player's `name` and a `random` number 
-	generator (`base.Randomness.DEFAULT` by default).
+	/** The constructor takes the player's `name` and a `random` number generator
+	(`base.Randomness.DEFAULT` by default).
 	*/
 	constructor: function RandomPlayer(params) {
 		Player.call(this, params);
@@ -1956,7 +1881,18 @@ players.RandomPlayer = declare(Player, {
 	*/
 	decision: function(game, player) {
 		return this.random.choice(this.movesFor(game, player));
-	}
+	},
+	
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'RandomPlayer',
+		serializer: function serialize_RandomPlayer(obj) {
+			return this.serializeAsProperties(obj, ['name', 'random']);
+		}
+	},
 }); // declare RandomPlayer.
 
 
@@ -1965,8 +1901,7 @@ players.RandomPlayer = declare(Player, {
 Automatic player that is scripted previously.
 */
 players.TracePlayer = declare(Player, {
-	/** The constructor takes the player's `name` and the `trace` as an 
-	sequence of moves to make.
+	/** The constructor takes the player's `name` and the `trace` as an sequence of moves to make.
 	*/
 	constructor: function TracePlayer(params) {
 		Player.call(this, params);
@@ -1975,8 +1910,8 @@ players.TracePlayer = declare(Player, {
 		this.__decision__ = this.__iter__();
 	},
 
-	/** The `decision(game, player)` returns the next move in the trace, or the 
-	last one if the trace has ended.
+	/** The `decision(game, player)` returns the next move in the trace, or the last one if the 
+	trace has ended.
 	*/
 	decision: function(game, player) {
 		try {
@@ -1987,22 +1922,28 @@ players.TracePlayer = declare(Player, {
 		return this.__decision__;
 	},
 	
-	__serialize__: function __serialize__() {
-		return ['TracePlayer', { name: this.name, trace: this.trace.toArray() }];
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'Player',
+		serializer: function serialize_Player(obj) {
+			return [{name: obj.name, trace: obj.trace.toArray()}];
+		}
 	}
 }); // declare TracePlayer.
 
 
 /** # HeuristicPlayer
 
-This is the base type of automatic players based on heuristic evaluations of 
-game states or moves.
+This is the base type of automatic players based on heuristic evaluations of game states or moves.
 */
+
 var HeuristicPlayer = players.HeuristicPlayer = declare(Player, {
-	/** The constructor takes the player's `name` and a `random` number 
-	generator (`base.Randomness.DEFAULT` by default). Many heuristic can be 
-	based on randomness, but this is also necessary to chose between moves with
-	the same evaluation without any bias.
+	/** The constructor takes the player's `name` and a `random` number generator 
+	(`base.Randomness.DEFAULT` by default). Many heuristic can be based on randomness, but this is 
+	also necessary to chose between moves with the same evaluation without any bias.
 	*/
 	constructor: function HeuristicPlayer(params) {
 		Player.call(this, params);
@@ -2011,112 +1952,131 @@ var HeuristicPlayer = players.HeuristicPlayer = declare(Player, {
 			.func('heuristic', { ignore: true });
 	},
 
-	/** An `HeuristicPlayer` choses the best moves at any given game state. For
-	this purpose it evaluates every move with 
-	`moveEvaluation(move, game, player)`. By default this function evaluates
-	the states resulting from making each move, which is the most common thing
-	to do.
+	/** An `HeuristicPlayer` choses the best moves at any given game state. For this purpose it 
+	evaluates every move with `moveEvaluation(move, game, player)`. By default this function 
+	evaluates the states resulting from making each move, which is the most common thing to do.
 	*/
 	moveEvaluation: function moveEvaluation(move, game, player) {
+		var heuristicPlayer = this;
 		if (Object.keys(move).length < 2) { // One active player.
 			return this.stateEvaluation(game.next(move), player);
 		} else { // Many active players.
 			var sum = 0, count = 0;
 			move = copy(obj(player, [move[player]]), move);
 			game.possibleMoves(move).forEach(function (ms) {
-				sum += this.stateEvaluation(game.next(ms), player);
+				sum += heuristicPlayer.stateEvaluation(game.next(ms), player);
 				++count;
 			});
 			return count > 0 ? sum / count : 0; // Average all evaluations.
 		}
 	},
 
-	/** The `stateEvaluation(game, player)` calculates a number as the 
-	assessment of the given game state for the given player. The base 
-	implementation returns the result for the player is the game has results, 
-	else it returns the heuristic value for the state.
+	/** The `stateEvaluation(game, player)` calculates a number as the assessment of the given game 
+	state for the given player. The base implementation returns the result for the player is the 
+	game has results, else it returns the heuristic value for the state.
 	*/
 	stateEvaluation: function stateEvaluation(game, player) {
 		var gameResult = game.result();
 		return gameResult ? gameResult[player] : this.heuristic(game, player);
 	},
 
-	/** The `heuristic(game, player)` is an evaluation used at states that are 
-	not finished games. The default implementation returns a random number in 
-	[-0.5, 0.5). This is only useful in testing. Any serious use should redefine 
-	this.
+	/** The `heuristic(game, player)` is an evaluation used at states that are not finished games. 
+	The default implementation returns a random number in [-0.5, 0.5). This is only useful in 
+	testing. Any serious use should redefine this.
 	*/
 	heuristic: function heuristic(game, player) {
 		return this.random.random(-0.5, 0.5);
 	},
 	
-	/** The `bestMoves(evaluatedMoves)` are all the best evaluated in the given
-	sequence of tuples [move, evaluation].
+	/** Heuristic players work by evaluating the moves of the `player` in the given `game` state. If
+	the game state is contingent, then all possible scenarios are evaluated and aggregated. The 
+	result of `evaluatedMoves` is a sequence of pairs `[move, evaluation]`, or a future for such 
+	sequence if the evaluation function is asynchronous.
 	*/
-	bestMoves: function bestMoves(evaluatedMoves) {
-		return iterable(evaluatedMoves).greater(function (pair) {
-			return pair[1];
-		}).map(function (pair) {
-			return pair[0];
+	evaluatedMoves: function evaluatedMoves(game, player) {
+		var heuristicPlayer = this,
+			isAsync = false;
+		if (!game.isContingent) {
+			/** Every move is evaluated using `moveEvaluation`. This may be asynchronous and hence
+			result in a `Future`.
+			*/
+			var result = this.possibleMoves(game, player).map(function (move) {
+				var e = heuristicPlayer.moveEvaluation(move, game, player);
+				isAsync = isAsync || Future.__isFuture__(e);
+				return Future.then(e, function (e) {
+					return [move, e];
+				});
+			});
+			return isAsync ? Future.all(result) : result;
+		} else {
+			/** Contingent game states don't have moves. Hence all posible haps are explored, and
+			when a non-contingent game state is reached the moves are evaluated.
+			*/
+			var posible = iterable(game.possibleHaps()).mapApply(function (haps, prob) {
+				var es = heuristicPlayer.evaluatedMoves(game.next(haps), player);
+				isAsync = isAsync || Future.__isFuture__(es);
+				return Future.then(es, function (es) {
+					return es.map(function (e) {
+						e[1] *= prob; // Multiply the evaluation by the probability of the haps.
+						return e;
+					});
+				});
+			});
+			/** After all posible scenarios have been evaluated, group the evaluations by move and
+			sum the evaluations weighted by probability.
+			*/
+			return Future.then(isAsync ? Future.all(posible) : posible, function (posible) {
+				return iterable(posible).groupBy(function (p) {
+					return p[0]; // Group evaluations by move.
+				}).mapApply(function (move, evals) {
+					return [move, iterable(evals).select(1).sum()];
+				});
+			});
+		}
+	}, // evaluatedMoves()
+	
+	/** The `possibleMoves` for a `player` in a given `game` is a set of objects, with one move for
+	the player, and all the options for the opponents.
+	*/
+	possibleMoves: function possibleMoves(game, player) {
+		var moves = game.moves();
+		raiseIf(!moves || !moves[player] || !Array.isArray(moves[player]) || moves[player].length < 1,
+			"Player "+ player +" has no moves in "+ game +" (moves= "+ moves +")!");
+		return iterable(moves[player]).map(function (move) {
+			return copy(obj(player, move), moves);
 		});
 	},
 	
-	/** `selectMoves(moves, game, player)` return an array with the best 
-	evaluated moves. The evaluation is done with the `moveEvaluation` method. 
-	The default implementation always returns a `Future`.
+	/** The `bestMoves(evaluatedMoves)` are all the best evaluated in the given sequence of tuples 
+	[move, evaluation].
 	*/
-	selectMoves: function selectMoves(moves, game, player) {
-		var heuristicPlayer = this,
-			asyncEvaluations = false,
-			evaluatedMoves = moves.map(function (move) {
-				var e = heuristicPlayer.moveEvaluation(move, game, player);
-				if (e instanceof Future) {
-					asyncEvaluations = asyncEvaluations || true;
-					return e.then(function (e) {
-						return [move, e];
-					});
-				} else {
-					return [move, e];
-				}
+	bestMoves: function bestMoves(evaluatedMoves) {
+		return Future.then(evaluatedMoves, function (evaluatedMoves) {
+			return iterable(evaluatedMoves).greater(function (pair) {
+				return pair[1];
+			}).map(function (pair) {
+				return pair[0];
 			});
-		if (asyncEvaluations) { // Avoid using Future if possible.
-			return Future.all(evaluatedMoves).then(this.bestMoves);
-		} else {
-			return this.bestMoves(evaluatedMoves);
-		}
+		});
 	},
 	
-	/** The `decision(game, player)` selects randomly from the best evaluated 
-	moves.
+	/** The `decision(game, player)` selects randomly from the best evaluated moves.
 	*/
 	decision: function decision(game, player) {
-		var heuristicPlayer = this,
-			moves = game.moves();
-		raiseIf(!moves || !moves.hasOwnProperty(player),
-			"Player "+ player +" is not active (moves= "+ JSON.stringify(moves) +")!");
-		var playerMoves = moves[player];
-		raiseIf(!Array.isArray(playerMoves) || playerMoves.length < 1,
-			"Player "+ player +" has no moves ("+ playerMoves +")!");
-		if (playerMoves.length == 1) { // Forced moves.
-			return playerMoves[0];
-		} else {
-			moves = playerMoves.map(function (move) {
-				return copy(obj(player, move), moves);
-			});
-			var selectedMoves = heuristicPlayer.selectMoves(moves, game, player);
-			return Future.then(selectedMoves, function (selectedMoves) {
-				raiseIf(!selectedMoves || !selectedMoves.length, 
-					"No moves where selected at ", game, " for player ", player, "!");
-				return heuristicPlayer.random.choice(selectedMoves)[player];
-			});
-		}
+		var random = this.random;
+		return Future.then(this.bestMoves(this.evaluatedMoves(game, player)), function (bestMoves) {
+			bestMoves = iterable(bestMoves).toArray();
+			raiseIf(!bestMoves || !bestMoves.length, 
+				"No moves where selected at ", game, " for player ", player, "!");
+			return random.choice(bestMoves)[player];
+		});
 	},
 	
-	// ## Utilities to build heuristics ########################################
+	// ## Utilities to build heuristics ############################################################
 	
-	/** A `composite` heuristic function returns the weighted sum of other
-	functions. The arguments must be a sequence of heuristic functions and a
-	weight. All weights must be between 0 and 1 and add up to 1.
+	/** A `composite` heuristic function returns the weighted sum of other functions. The arguments 
+	must be a sequence of heuristic functions and a weight. All weights must be between 0 and 1 and
+	add up to 1.
 	*/
 	'static composite': function composite() {
 		var components = Array.prototype.slice.call(arguments), weightSum = 0;
@@ -2139,15 +2099,13 @@ var HeuristicPlayer = players.HeuristicPlayer = declare(Player, {
 	}
 }); // declare HeuristicPlayer.
 
-
 /** # MaxNPlayer
 
-Automatic players based on the MaxN algorithm, a MiniMax variant for games of
-more than two players.
+Automatic players based on the MaxN algorithm, a MiniMax variant for games of more than two players.
 */
 var MaxNPlayer = players.MaxNPlayer = declare(HeuristicPlayer, {
-	/** Besides the parameters of every [`HeuristicPlayer`](HeuristicPlayer.js.html),
-	an `horizon` for the search may be specified (3 plies by default).
+	/** Besides the parameters of every [`HeuristicPlayer`](HeuristicPlayer.js.html), an `horizon` 
+	for the search may be specified (3 plies by default).
 	*/
 	constructor: function MaxNPlayer(params) {
 		HeuristicPlayer.call(this, params);
@@ -2155,15 +2113,14 @@ var MaxNPlayer = players.MaxNPlayer = declare(HeuristicPlayer, {
 			.integer('horizon', { defaultValue: 3, coerce: true });
 	},
 
-	/** This player evaluates each state using the `maxn` method, taking the 
-	evaluation for the given `player`.
+	/** This player evaluates each state using the `maxn` method, taking the evaluation for the 
+	given `player`.
 	*/
 	stateEvaluation: function stateEvaluation(game, player) {
 		return this.maxN(game, player, 0)[player];
 	},
 
-	/** `heuristics(game)` returns an heuristic value for each players in the 
-	game, as an object.
+	/** `heuristics(game)` returns an heuristic value for each players in the game, as an object.
 	*/
 	heuristics: function heuristic(game) {
 		var result = {}, maxN = this;
@@ -2173,14 +2130,13 @@ var MaxNPlayer = players.MaxNPlayer = declare(HeuristicPlayer, {
 		return result;
 	},
 
-	/** `quiescence(game, player, depth)` is a stability test for the given 
-	`game` state and the given `player`. If the game is quiescent, this function
-	must return evaluations. Else it must return null. 
+	/** `quiescence(game, player, depth)` is a stability test for the given `game` state and the 
+	given `player`. If the game is quiescent, this function must return evaluations. Else it must 
+	return null. 
 	
-	Final game states are always quiescent, and their evaluations are the game's 
-	result for each player. This default implementation also returns heuristic 
-	evaluations for every game state at a deeper depth than the player's 
-	horizon, calculated via the `heuristics()` method. 
+	Final game states are always quiescent, and their evaluations are the game's result for each 
+	player. This default implementation also returns heuristic evaluations for every game state at 
+	a deeper depth than the player's horizon, calculated via the `heuristics()` method. 
 	*/
 	quiescence: function quiescence(game, player, depth) {
 		var results = game.result();
@@ -2193,9 +2149,8 @@ var MaxNPlayer = players.MaxNPlayer = declare(HeuristicPlayer, {
 		}
 	},
 	
-	/** The core `maxN(game, player, depth)` algorithm return the evaluations 
-	for each player of the given game, assuming each player tries to maximize 
-	its own evaluation regardless of the others'.
+	/** The core `maxN(game, player, depth)` algorithm return the evaluations for each player of the 
+	given game, assuming each player tries to maximize its own evaluation regardless of the others'.
 	*/
 	maxN: function maxN(game, player, depth) {
 		var values = this.quiescence(game, player, depth);
@@ -2218,13 +2173,17 @@ var MaxNPlayer = players.MaxNPlayer = declare(HeuristicPlayer, {
 		return values;
 	},
 	
-	toString: function toString() {
-		return (this.constructor.name || 'MaxNPlayer') +'('+ JSON.stringify({
-			name: this.name, horizon: this.horizon
-		}) +')';
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'MaxNPlayer',
+		serializer: function serialize_MaxNPlayer(obj) {
+			return this.serializeAsProperties(obj, ['name', 'horizon']);
+		}
 	}
-}); // declare MiniMaxPlayer.
-
+}); // declare MaxNPlayer.
 
 /** # MiniMaxPlayer
 
@@ -2295,13 +2254,17 @@ var MiniMaxPlayer = players.MiniMaxPlayer = declare(HeuristicPlayer, {
 		return value;
 	},
 	
-	toString: function toString() {
-		return (this.constructor.name || 'MiniMaxPlayer') +'('+ JSON.stringify({
-			name: this.name, horizon: this.horizon
-		}) +')';
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'MiniMaxPlayer',
+		serializer: function serialize_MiniMaxPlayer(obj) {
+			return this.serializeAsProperties(obj, ['name', 'horizon']);
+		}
 	}
 }); // declare MiniMaxPlayer.
-
 
 /** # AlphaBetaPlayer
 
@@ -2356,6 +2319,17 @@ players.AlphaBetaPlayer = declare(MiniMaxPlayer, {
 			}
 		}
 		return isActive ? alpha : beta;
+	},
+	
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'AlphaBetaPlayer',
+		serializer: function serialize_AlphaBetaPlayer(obj) {
+			return this.serializeAsProperties(obj, ['name', 'horizon']);
+		}
 	}
 }); // declare AlphaBetaPlayer.
 
@@ -2369,12 +2343,12 @@ var MonteCarloPlayer = players.MonteCarloPlayer = declare(HeuristicPlayer, {
 	[flat Monte Carlo game tree search method](http://en.wikipedia.org/wiki/Monte-Carlo_tree_search). 
 	The parameters may include:
 	
-	+ `simulationCount=30`: Maximum amount of simulations performed for each 
-		available move at each decision.
+	+ `simulationCount=30`: Maximum amount of simulations performed for each available move at each 
+		decision.
 	+ `timeCap=1000ms`: Time limit for the player to decide.
 	+ `horizon=500`: Maximum amount of moves performed in simulations.
-	+ `agent`: Player instance used in the simulations. If undefined moves are
-		chosen at random. Agents with asynchronous decisions are not supported.
+	+ `agent`: Player instance used in the simulations. If undefined moves are chosen at random. 
+		Agents with asynchronous decisions are not supported.
 	*/
 	constructor: function MonteCarloPlayer(params) {
 		HeuristicPlayer.call(this, params);
@@ -2389,14 +2363,14 @@ var MonteCarloPlayer = players.MonteCarloPlayer = declare(HeuristicPlayer, {
 		}
 	},
 	
-	/** `selectMoves(moves, game, player)` return an array with the best 
-	evaluated moves.
+	/** `evaluatedMoves(game, player)` returns a sequence with the evaluated moves.
 	*/
-	selectMoves: function selectMoves(moves, game, player) {
+	evaluatedMoves: function evaluatedMoves(game, player) {
+		raiseIf(game.isContingent, "MonteCarloPlayer cannot evaluate root contingent states!"); //FIXME
 		var monteCarloPlayer = this,
 			endTime = Date.now() + this.timeCap,
 			gameNext = game.next.bind(game),
-			options = moves.map(function (move) {
+			options = this.possibleMoves(game, player).map(function (move) {
 				return { 
 					move: move, 
 					nexts: (Object.keys(move).length < 2 ? 
@@ -2406,7 +2380,7 @@ var MonteCarloPlayer = players.MonteCarloPlayer = declare(HeuristicPlayer, {
 					sum: 0, 
 					count: 0 
 				};
-			});
+			}).toArray(); // Else the following updates won't work.
 		for (var i = 0; i < this.simulationCount && Date.now() < endTime; ++i) {
 			options.forEach(function (option) {
 				option.nexts = option.nexts.filter(function (next) {
@@ -2417,17 +2391,14 @@ var MonteCarloPlayer = players.MonteCarloPlayer = declare(HeuristicPlayer, {
 				});
 			});
 		}
-		options = iterable(options).greater(function (option) {
+		return options.map(function (option) {
 			raiseIf(isNaN(option.sum), "State evaluation is NaN for move ", option.move, "!");
-			return option.count > 0 ? option.sum / option.count : 0;
-		}).map(function (option) {
-			return option.move;
+			return [option.move, option.count > 0 ? option.sum / option.count : 0];
 		});
-		return options;
 	},
 	
-	/** This player's `stateEvaluation(game, player)` runs `simulationCount` 
-	simulations and returns the average result.
+	/** This player's `stateEvaluation(game, player)` runs `simulationCount` simulations and returns 
+	the average result. It is provided for compatibility, since `evaluatedMoves` does not call it.
 	*/
 	stateEvaluation: function stateEvaluation(game, player) {
 		var resultSum = 0, 
@@ -2443,16 +2414,16 @@ var MonteCarloPlayer = players.MonteCarloPlayer = declare(HeuristicPlayer, {
 		return simulationCount > 0 ? resultSum / simulationCount : 0;
 	},
 	
-	/** A `simulation(game, player)` plays a random match from the given `game`
-	state and returns an object with the final state (`game`), its result 
-	(`result`) and the number of plies simulated (`plies`).
+	/** A `simulation(game, player)` plays a random match from the given `game` state and returns an 
+	object with the final state (`game`), its result (`result`) and the number of plies simulated 
+	(`plies`).
 	*/
 	simulation: function simulation(game, player) {
 		var mc = this,
 			plies, move, moves;
 		for (plies = 0; true; ++plies) {
-			if (game instanceof Aleatory) {
-				game = game.next();
+			if (game.isContingent) {
+				game = game.randomNext(this.random);
 			} else {
 				moves = game.moves();
 				if (!moves) { // If game state is final ...
@@ -2472,11 +2443,15 @@ var MonteCarloPlayer = players.MonteCarloPlayer = declare(HeuristicPlayer, {
 		raise("Simulation ended unexpectedly for player ", player, " in game ", game, "!");
 	},
 	
-	__serialize__: function __serialize__() {
-		return [this.constructor.name, { name: this.name, 
-			simulationCount: this.simulationCount, timeCap: this.timeCap, 
-			agent: this.agent 
-		}];
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'MonteCarloPlayer',
+		serializer: function serialize_MonteCarloPlayer(obj) {
+			return this.serializeAsProperties(obj, ['name', 'simulationCount', 'timeCap', 'agent']);
+		}
 	}
 }); // declare MonteCarloPlayer
 
@@ -2512,9 +2487,9 @@ players.UCTPlayer = declare(MonteCarloPlayer, {
 		}));
 	},
 	
-	/** `selectMoves(moves, game, player)` return an array with the best evaluated moves.
+	/** `evaluatedMoves(game, player)` return a sequence with the evaluated moves.
 	*/
-	selectMoves: function selectMoves(moves, game, player) {
+	evaluatedMoves: function evaluatedMoves(game, player) {
 		var root = new GameTree(null, game),
 			endTime = Date.now() + this.timeCap,
 			node, simulationResult;
@@ -2538,21 +2513,22 @@ players.UCTPlayer = declare(MonteCarloPlayer, {
 				node.uct.rewards += (game.normalizedResult(simulationResult.result)[player] + 1) / 2;
 			}
 		}
-		moves = iterable(root.children).select(1).greater(function (n) {
-			return n.uct.visits;
-		}).map(function (n) {
-			return n.transition;
+		return iterable(root.children).select(1).map(function (n) {
+			return [n.transition, n.uct.visits];
 		});
-		return moves;
 	},
 	
-	__serialize__: function __serialize__() {
-		return [this.constructor.name, { name: this.name, 
-			simulationCount: this.simulationCount, timeCap: this.timeCap, 
-			explorationConstant: this.explorationConstant 
-		}];
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'UCTPlayer',
+		serializer: function serialize_UCTPlayer(obj) {
+			return this.serializeAsProperties(obj, ['name', 'simulationCount', 'timeCap', 'explorationConstant']);
+		}
 	}
-}); // declare MonteCarloPlayer
+}); // declare UCTPlayer
 
 
 /** # UserInterfacePlayer
@@ -2579,7 +2555,7 @@ var UserInterfacePlayer = players.UserInterfacePlayer = declare(Player, {
 	*/
 	decision: function decision(game, player) {
 		if (this.__future__ && this.__future__.isPending()) {
-			this.__future__.resolve(new Match.CommandQuit());
+			this.__future__.resolve(new Match.commands.Quit());
 		}
 		this.__future__ = new Future();
 		return this.__future__;
@@ -2753,27 +2729,31 @@ var WebWorkerPlayer = players.WebWorkerPlayer = declare(Player, {
 	namespace (`self`). If a `workerSetup` function is given, it is also run. After that, the 
 	`playerBuilder` function is called and its results stored in the variable `self.PLAYER`.
 	*/
-	"static createWorker": function createWorker(playerBuilder, workerSetup) {
-		raiseIf('string function'.indexOf(typeof playerBuilder) < 0, "Invalid player builder: "+ playerBuilder +"!");
+	'static createWorker': function createWorker(params) {
+		raiseIf('string function'.indexOf(typeof params.playerBuilder) < 0,
+			"Invalid player builder: "+ params.playerBuilder +"!");
+		raiseIf(params.workerSetup && 'string function'.indexOf(typeof params.workerSetup) < 0,
+			"Invalid worker setup: "+ params.workerSetup +"!");
 		var parallel = new base.Parallel();
-		return parallel.run('self.ludorum = ('+ exports.__init__ +')(self.base), "OK"').then(function () {
-				if (typeof workerSetup === 'function') {
-					return parallel.run('('+ workerSetup +')(), "OK"');
-				}
-			}).then(function () {
-				return parallel.run('self.PLAYER = ('+ playerBuilder +').call(self), "OK"');
-			}).then(function () {
-				return parallel.worker;
-			});
+		return Future.sequence([exports].concat(params.dependencies || []), function (dependency) {
+			return parallel.loadModule(dependency, true);
+		}).then(function () {
+			return parallel.run(
+				(params.workerSetup ? '('+ params.workerSetup +')(),\n' : '')+
+				'self.PLAYER = ('+ params.playerBuilder +').call(self),\n'+
+				'"OK"');
+		}).then(function () {
+			return parallel.worker;
+		});
 	},
 	
 	/** The static `create(params)` method creates (asynchronously) and initializes a 
 	`WebWorkerPlayer`, with a web worker ready to play. The `params` must include the 
 	`playerBuilder` function to execute on the web worker's environment.
 	*/
-	"static create": function create(params) {
+	'static create': function create(params) {
 		var WebWorkerPlayer = this;
-		return WebWorkerPlayer.createWorker(params.playerBuilder, params.workerSetup).then(function (worker) {
+		return WebWorkerPlayer.createWorker(params).then(function (worker) {
 			return new WebWorkerPlayer({name: name, worker: worker}); 
 		});
 	},
@@ -2789,25 +2769,142 @@ var WebWorkerPlayer = players.WebWorkerPlayer = declare(Player, {
 			this.__future__.resolve(Match.commandQuit);
 		}
 		this.__future__ = new Future();
-		this.worker.postMessage('PLAYER.decision(ludorum.Game.fromJSON('+ game.toJSON() +'), '+ JSON.stringify(player) +')');
+		this.worker.postMessage('PLAYER.decision(Sermat.mat('+ JSON.stringify(Sermat.ser(game)) +'), '+ JSON.stringify(player) +')');
 		return this.__future__;
 	}
 }); // declare WebWorkerPlayer
+
+/** # Aleatory
+
+Aleatories are different means of non determinism that games can use, like: dice, card decks, 
+roulettes, etc. They are used by `Aleatoric` game states.
+*/
+var Aleatory = exports.aleatories.Aleatory = declare({
+	/** The base class implements an integer uniform random variable between a minimum and maximum
+	value (inclusively).
+	+ 
+	*/
+	constructor: function Aleatory(min, max) {
+		switch (arguments.length) {
+			case 1: this.range = [1, min]; break;
+			case 2: this.range = [min, max]; break;
+		}
+	},
+	
+	/** The `Aleatory.value()` can be used to obtain a valid random value for the random variable.
+	*/
+	value: function value(random) {
+		return (random || Randomness.DEFAULT).randomInt(this.range[0], this.range[1] + 1);
+	},
+		
+	/** In order to properly search a game tree with aleatory nodes, the random variables' 
+	distribution has to be known. `Aleatory.distribution()` computes the histogram for the random 
+	variables on which this aleatory depends, as a sequence of pairs `[value, probability]`.
+	
+	By default it returns a flat histogram, assuming the random variable is uniform.
+	*/
+	distribution: function () {
+		var min = this.range[0], 
+			max = this.range[1],
+			probability = 1 / (max - min + 1);
+		return Iterable.range(min, max + 1).map(function (value) {
+			return [value, probability];
+		});
+	},
+	
+	// ## Utility methods ##########################################################################
+
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'Aleatory',
+		serializer: function serialize_Aleatory(obj) {
+			return [this.range];
+		}
+	}
+}); // declare Aleatory.
+
+
+/** # UniformAleatory
+
+An uniform aleatory is one that ranges over a set of values, all of which have the same probability
+of occurrence.
+*/
+var UniformAleatory = exports.aleatories.UniformAleatory = declare(Aleatory, {
+	/** An uniform aleatory is defined by a sequence of `values`. The sequence cannot be empty, but
+	one value is supported as weird as it may be.
+	*/
+	constructor: function UniformAleatory(values) {
+		this.__values__ = iterable(values).toArray();
+		raiseIf(this.__values__.length < 1, "No values for aleatory!");
+	},
+
+	/** The `value` is one of the `values` used to build this aleatory, picked at random.
+	*/
+	value: function value(random) {
+		return (random || Randomness.DEFAULT).choice(this.__values__);
+	},
+	
+	/** The `distribution` of an uniform aleatory is a sequence of pairs `[value, probability]`.
+	*/
+	distribution: function distribution() {
+		var prob = 1 / this.__values__.length;
+		return this.__values__.map(function (v) {
+			return [v, prob];
+		});
+	},
+	
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'UniformAleatory',
+		serializer: function serialize_UniformAleatory(obj) {
+			return [this.__values__];
+		}
+	}
+});
 
 /** # Dice aleatories
 
 Implementations of common dice and related functions.
 */
-aleatories.dice = {
+var dice = aleatories.dice = {
 	/** Common dice variants.
 	*/
-	D4: Aleatory.withRange(1, 4),
-	D6: Aleatory.withRange(1, 6),
-	D8: Aleatory.withRange(1, 8),
-	D10: Aleatory.withRange(1, 10),
-	D12: Aleatory.withRange(1, 12),
-	D20: Aleatory.withRange(1, 20),
-	D100: Aleatory.withRange(1, 100),
+	D4: new Aleatory(1, 4),
+	D6: new Aleatory(1, 6),
+	D8: new Aleatory(1, 8),
+	D10: new Aleatory(1, 10),
+	D12: new Aleatory(1, 12),
+	D20: new Aleatory(1, 20),
+	D100: new Aleatory(1, 100),
+	
+	/** The `sumProbability` that rolling `n` dice of `s` sides yields a sum equal to `p`. Check the 
+	article at [Mathworld](http://mathworld.wolfram.com/Dice.html).
+	*/
+	sumProbability: function sumProbability(p, n, s) {
+		n = n|0;
+		s = s|0;
+		p = p|0;
+		if (isNaN(n) || isNaN(s) || isNaN(p) || n < 1 || s < 2) {
+			return NaN;
+		} else if (p < n || p > n * s) {
+			return 0;
+		} else {
+			var factorial = base.math.factorial,
+				fact_n = factorial(n),
+				fact_n_1 = fact_n / n; // factorial(n - 1)
+			return Math.pow(s, -n) *
+				Iterable.range(0, Math.floor((p - n) / s) + 1).map(function (k) {
+					var comb1 = fact_n / factorial(k) / factorial(n - k),
+						x = p - s * k - 1,
+						comb2 = factorial(x) / fact_n_1 / factorial(x - n + 1);
+					return (k % 2 ? -1 : 1) * comb1 * comb2;
+				}).sum();
+		}
+	}
 }; //// declare Dice.
 
 /** Simple reference games with a predefined outcome, mostly for testing 
@@ -2866,21 +2963,28 @@ games.Predefined = declare(Game, {
 		return new this.constructor(this.opponent(), this.__results__, this.height - 1, this.width);
 	},
 	
-	__serialize__: function __serialize__() {
-		return [this.name, this.activePlayer(), this.results, this.height, this.width];
+	// ## Utility methods ##########################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'Predefined',
+		serializer: function serialize_Predefined(obj) {
+			return [obj.activePlayer(), obj.__results__, obj.height, obj.width];
+		}
 	}
 }); // declare Predefined.
 
 
 /** # Choose2Win
 
-Choose2Win is a simple silly game. Each turn one of the players can decide to 
-win, to lose or to pass the turn. It is meant to be used only for testing 
-Ludorum, since a game can hardly become less interesting than this.
+Choose2Win is a simple silly game. Each turn one of the players can decide to win, to lose or to 
+pass the turn. It is meant to be used only for testing Ludorum, since a game can hardly become less 
+interesting than this.
 */
 games.Choose2Win = declare(Game, {
-	/** The constructor takes a number of turns for the game to last (`Infinity`
-	by default), the active player and the winner if the game has ended. 
+	/** The constructor takes a number of turns for the game to last (`Infinity` by default), the 
+	active player and the winner if the game has ended. 
 	*/
 	constructor: function Choose2Win(turns, activePlayer, winner) {
 		Game.call(this, activePlayer);
@@ -2902,16 +3006,15 @@ games.Choose2Win = declare(Game, {
 		}
 	},
 
-	/** Victory is for whom chooses to win first. Defeat is for whom chooses to 
-	lose first. A draw only results when the limit of turns (if any) is met.
+	/** Victory is for whom chooses to win first. Defeat is for whom chooses to lose first. A draw 
+	only results when the limit of turns (if any) is met.
 	*/
 	result: function result() {
 		return this.__winner__ ? this.victory(this.__winner__) :
 			this.__turns__ < 1 ? this.draw() : null;
 	},
 
-	/** If a player moves to win or lose, a final game state is returned. Else
-	the game goes on.
+	/** If a player moves to win or lose, a final game state is returned. Else the game goes on.
 	*/
 	next: function next(moves) {
 		var activePlayer = this.activePlayer(),
@@ -2925,20 +3028,28 @@ games.Choose2Win = declare(Game, {
 		}
 	},
 	
-	__serialize__: function __serialize__() {
-		return [this.name, this.__turns__, this.activePlayer(), this.__winner__];
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'Choose2Win',
+		serializer: function serialize_Choose2Win(obj) {
+			var r = [obj.__turns__, obj.activePlayer()];
+			if (obj.__winner__) {
+				r.push(obj.__winner__);
+			}
+			return r;
+		}
 	}
 }); // declare Choose2Win.
 
-
 /** # ConnectionGame
 
-Base class for a subset of the family of 
-[connection games](http://en.wikipedia.org/wiki/Connection_game), which includes 
-[TicTacToe](http://en.wikipedia.org/wiki/Tic-tac-toe), 
-[ConnectFour](http://en.wikipedia.org/wiki/Connect_Four) and
-[Gomoku](http://en.wikipedia.org/wiki/Gomoku). It implements a rectangular 
-board, the placing of the pieces and the checks for lines.
+Base class for a subset of the family of [connection games](http://en.wikipedia.org/wiki/Connection_game), 
+which includes [TicTacToe](http://en.wikipedia.org/wiki/Tic-tac-toe), 
+[ConnectFour](http://en.wikipedia.org/wiki/Connect_Four) and [Gomoku](http://en.wikipedia.org/wiki/Gomoku).
+It implements a rectangular board, the placing of the pieces and the checks for lines.
 */
 games.ConnectionGame = declare(Game, {
 	/** Boards by default have 9 rows ...
@@ -2953,9 +3064,8 @@ games.ConnectionGame = declare(Game, {
 	*/
 	lineLength: 5,
 
-	/** The constructor takes the active player and the board given as a string.
-	For the game's `board` this last string argument is used to build a 
-	[`CheckerboardFromString`](../utils/CheckerboardFromString.js.html).
+	/** The constructor takes the active player and the board given as a string. For the game's 
+	`board` this last string argument is used to build a [`CheckerboardFromString`](../utils/CheckerboardFromString.js.html).
 	*/
 	constructor: function ConnectionGame(activePlayer, board) {
 		Game.call(this, activePlayer);
@@ -2990,9 +3100,9 @@ games.ConnectionGame = declare(Game, {
 		return __lines__;
 	})(),
 	
-	/** A connection game ends when either player gets the required amount of
-	pieces aligned (either horizontally, vertically or diagonally), hence 
-	winning the game. The match ends in a tie if the board gets full.
+	/** A connection game ends when either player gets the required amount of pieces aligned (either
+	horizontally, vertically or diagonally), hence winning the game. The match ends in a tie if the 
+	board gets full.
 	*/
 	result: function result() {
 		if (this.hasOwnProperty('__result__')) {
@@ -3011,8 +3121,8 @@ games.ConnectionGame = declare(Game, {
 		return this.__result__ = null; // The game continues.
 	},
 	
-	/** The active player can place a piece in any empty square in the board.
-	The moves are indices in the board's string representation.
+	/** The active player can place a piece in any empty square in the board. The moves are indices
+	in the board's string representation.
 	*/
 	moves: function moves() {
 		if (this.hasOwnProperty('__moves__')) {
@@ -3030,8 +3140,8 @@ games.ConnectionGame = declare(Game, {
 		}
 	},
 
-	/** To get from one game state to the next, an active player's piece in the 
-	square indicated by its move.
+	/** To get from one game state to the next, an active player's piece in the square indicated by 
+	its move.
 	*/
 	next: function next(moves) {
 		var activePlayer = this.activePlayer(),
@@ -3044,11 +3154,11 @@ games.ConnectionGame = declare(Game, {
 		);
 	},
 	
-	// ## User intefaces #######################################################
+	// ## User intefaces ###########################################################################
 	
-	/** The `display(ui)` method is called by a `UserInterface` to render the
-	game state. The only supported user interface type is `BasicHTMLInterface`.
-	The look can be configured using CSS classes.
+	/** The `display(ui)` method is called by a `UserInterface` to render the game state. The only 
+	supported user interface type is `BasicHTMLInterface`. The look can be configured using CSS 
+	classes.
 	*/
 	display: function display(ui) {
 		raiseIf(!ui || !(ui instanceof UserInterface.BasicHTMLInterface), "Unsupported UI!");
@@ -3069,8 +3179,15 @@ games.ConnectionGame = declare(Game, {
 		return ui;
 	},
 
-	__serialize__: function __serialize__() {
-		return [this.name, this.activePlayer(), this.board.string];
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'ConnectionGame',
+		serializer: function serialize_ConnectionGame(obj) {
+			return [obj.activePlayer(), obj.board];
+		}
 	}
 }); // declare ConnectionGame.
 
@@ -3128,8 +3245,13 @@ games.OddsAndEvens = declare(Game, {
 
 	// ## Utility methods ##########################################################################
 	
-	__serialize__: function __serialize__() {
-		return [this.name, this.turns, this.points];
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'OddsAndEvens',
+		serializer: function serialize_OddsAndEvens(obj) {
+			return [obj.turns, obj.points];
+		}
 	}
 }); // declare OddsAndEvens.
 
@@ -3141,8 +3263,8 @@ Implementation of the traditional [Tic-Tac-Toe game](http://en.wikipedia.org/wik
 games.TicTacToe = declare(Game, {
 	name: 'TicTacToe',
 
-	/** The constructor takes the `activePlayer` (`"Xs"` by default) and the
-	`board` as a string (empty board as default).
+	/** The constructor takes the `activePlayer` (`"Xs"` by default) and the `board` as a string 
+	(empty board as default).
 	*/
 	constructor: function TicTacToe(activePlayer, board) {
 		Game.call(this, activePlayer);
@@ -3153,8 +3275,8 @@ games.TicTacToe = declare(Game, {
 	*/
 	players: ['Xs', 'Os'],
 	
-	/** A match ends with a victory for any player that has three marks in line, 
-	or a draw if the board is full.
+	/** A match ends with a victory for any player that has three marks in line, or a draw if the 
+	board is full.
 	*/
 	result: (function () {
 		return function result() {			
@@ -3170,8 +3292,7 @@ games.TicTacToe = declare(Game, {
 		};
 	})(),
 	
-	/** The active player's `moves()` are the indexes of empty squares in the 
-	board.
+	/** The active player's `moves()` are the indexes of empty squares in the board.
 	*/
 	moves: function moves() {
 		if (!this.result()) {
@@ -3187,8 +3308,8 @@ games.TicTacToe = declare(Game, {
 		}		
 	},
 	
-	/** The `next(moves)` game state puts the mark of the active player in the
-	square indicated by the move. 
+	/** The `next(moves)` game state puts the mark of the active player in the square indicated by 
+	the move. 
 	*/
 	next: function next(moves) {
 		var activePlayer = this.activePlayer(), 
@@ -3200,17 +3321,19 @@ games.TicTacToe = declare(Game, {
 		var newBoard = this.board.substring(0, move) + activePlayer.charAt(0) + this.board.substring(move + 1);
 		return new this.constructor(this.opponent(activePlayer), newBoard);
 	},
-
-	// ## Utility methods ######################################################
 	
-	/** The serialization of the game is a representation of a call to its
-	constructor.
+	// ## Utility methods ##########################################################################
+	
+	/** Serialization and materialization using Sermat.
 	*/
-	__serialize__: function __serialize__() {
-		return [this.name, this.activePlayer(), this.board];
+	'static __SERMAT__': {
+		identifier: 'TicTacToe',
+		serializer: function serialize_TicTacToe(obj) {
+			return [obj.activePlayer(), obj.board];
+		}
 	},
 	
-	// ## User intefaces #######################################################
+	// ## User intefaces ###########################################################################
 	
 	/** `printBoard()` creates a text (ASCII) version of the board.
 	*/
@@ -3223,9 +3346,9 @@ games.TicTacToe = declare(Game, {
 		].join('\n');
 	},
 	
-	/** The `display(ui)` method is called by a `UserInterface` to render the
-	game state. The only supported user interface type is `BasicHTMLInterface`.
-	The look can be configured using CSS classes.
+	/** The `display(ui)` method is called by a `UserInterface` to render the game state. The only 
+	supported user interface type is `BasicHTMLInterface`. The look can be configured using CSS 
+	classes.
 	*/
 	display: function display(ui) {
 		raiseIf(!ui || !(ui instanceof UserInterface.BasicHTMLInterface), "Unsupported UI!");
@@ -3248,16 +3371,15 @@ games.TicTacToe = declare(Game, {
 		return ui;
 	},
 	
-	// ## Heuristics and AI ####################################################
+	// ## Heuristics and AI ########################################################################
 	
-	/** `TicTacToe.heuristics` is a bundle of helper functions to build heuristic 
-	evaluation functions for this game.
+	/** `TicTacToe.heuristics` is a bundle of helper functions to build heuristic evaluation 
+	functions for this game.
 	*/
 	"static heuristics": {
-		/** `heuristicFromWeights(weights)` builds an heuristic evaluation 
-		function from weights for each square in the board. The result of the 
-		function is the weighted sum, empty squares being ignored, opponent 
-		squares considered negative.
+		/** `heuristicFromWeights(weights)` builds an heuristic evaluation function from weights for
+		each square in the board. The result of the function is the weighted sum, empty squares 
+		being ignored, opponent squares considered negative.
 		*/
 		heuristicFromWeights: function heuristicFromWeights(weights) {
 			var weightSum = iterable(weights).map(Math.abs).sum();
@@ -3272,25 +3394,24 @@ games.TicTacToe = declare(Game, {
 		}
 	},
 	
-	// ## TicTacToe type initialization ########################################
+	// ## TicTacToe type initialization ############################################################
 	
 	'': function () { 
-		/** The regular expressions `WIN_X` and `WIN_O` used in the victory test 
-		are calculated here.
+		/** The regular expressions `WIN_X` and `WIN_O` used in the victory test are calculated 
+		here.
 		*/
 		var board3x3 = new CheckerboardFromString(3, 3, '_'.repeat(9)),
 			lines = board3x3.sublines(board3x3.lines(), 3);
 		this.prototype.WIN_X = new RegExp(board3x3.asRegExps(lines, 'X', '.'));
 		this.prototype.WIN_O = new RegExp(board3x3.asRegExps(lines, 'O', '.'));
 		
-		/** The `defaultHeuristic `for TicTacToe is based on weights for each 
-		square. Center is worth 5, corners 2 and the other squares 1.
+		/** The `defaultHeuristic `for TicTacToe is based on weights for each square. Center is 
+		worth 5, corners 2 and the other squares 1.
 		*/
 		this.heuristics.defaultHeuristic = this.heuristics
 			.heuristicFromWeights([2,1,2,1,5,1,2,1,2]);
 	}	
 }); // declare TicTacToe
-
 
 /** Implementation of the [Toads & Frogs](http://en.wikipedia.org/wiki/Toads_and_Frogs_%28game%29) 
 	game.
@@ -3363,8 +3484,15 @@ games.ToadsAndFrogs = declare(Game, {
 		return new this.constructor(this.opponent(), board);
 	},
 
-	__serialize__: function __serialize__() {
-		 return [this.name, this.activePlayer, this.board];
+	// ## Utility methods ##########################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'ToadsAndFrogs',
+		serializer: function serialize_ToadsAndFrogs(obj) {
+			return [obj.activePlayer(), obj.board];
+		}
 	}	
 }); // declare ToadsAndFrogs
 
@@ -3421,30 +3549,32 @@ games.Pig = declare(Game, {
 	},
 
 	/** If the active player holds, it earns the sum of the rolls made so in its turn. If the move 
-	is roll, a dice is rolled. A roll of 1 stops the this turn and the active player earns no 
+	is roll, a die is rolled. A roll of 1 stops the this turn and the active player earns no 
 	points. A roll of 2 or up, makes the turn continue.
 	
-	For this game mechanic, an [aleatory](../Aleatory.js.html) is used. If the move is `roll`, an 
-	instance of this class is build and returned using the [dice shotcuts](../aleatories/dice.js.html). 
-	The function passed to aleatory makes the decision explained before, based on the value of the 
-	dice.
+	For this game mechanic, an [contingent game state](../Contingent.js.html) is used. If the move 
+	is `roll`, an instance of this class is build and returned using the [dice shotcuts](
+	../aleatories/dice.js.html) as random variables. This aleatoric game state will call the `next` 
+	method again with the same moves and the values of the random variables, and then the match will
+	continue.
 	*/
-	next: function next(moves) {
+	next: function next(moves, haps) {
 		var activePlayer = this.activePlayer(),
-			move = moves[activePlayer];
-		raiseIf(typeof move === 'undefined', 'No move for active player ', activePlayer, ' at ', this, '!');
+			move = moves && moves[activePlayer];
+		raiseIf(!move, 'No move for active player ', activePlayer, ' at ', this, '!');
 		if (move === 'hold') {
 			var scores = copy(this.__scores__);
 			scores[activePlayer] += iterable(this.__rolls__).sum();
 			return new this.constructor(this.opponent(), this.goal, scores, []);
 		} else if (move === 'roll') {
-			var game = this;
-			return new aleatories.dice.D6(function (value) {
-				value = isNaN(value) ? this.value() : +value;
-				return (value > 1) ? 
-					new game.constructor(activePlayer,  game.goal, game.__scores__, game.__rolls__.concat(value)) :
-					new game.constructor(game.opponent(), game.goal, game.__scores__, []);
-			});
+			var roll = (haps && haps.die)|0;
+			if (!roll) { // Dice has not been rolled.
+				return new Contingent({ die: aleatories.dice.D6 }, this, moves);
+			} else { // Dice has been rolled.
+				return (roll > 1) ? 
+					new this.constructor(activePlayer,  this.goal, this.__scores__, this.__rolls__.concat(roll)) :
+					new this.constructor(this.opponent(), this.goal, this.__scores__, []);
+			}
 		} else {
 			raise("Invalid moves ", JSON.stringify(moves), " at ", this, "!");
 		}
@@ -3458,12 +3588,13 @@ games.Pig = declare(Game, {
 		return [-this.goal, +this.goal];
 	},
 	
-	/** Serialization is used in the `toString()` method, but it is also vital 
-	for sending the game state across a network or the marshalling between the 
-	rendering thread and a webworker.
-	*/	
-	__serialize__: function __serialize__() {
-		return [this.name, this.activePlayer(), this.goal, this.__scores__, this.__rolls__];
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'Pig',
+		serializer: function serialize_Pig(obj) {
+			return [obj.activePlayer(), obj.goal, obj.__scores__, obj.__rolls__];
+		}
 	}
 }); // Pig.
 
@@ -3471,7 +3602,7 @@ games.Pig = declare(Game, {
 /** # Mutropas
 
 Mutropas is a game invented for Ludorum as a simple example of a game of hidden (a.k.a. incomplete)
-information.
+information. It is also a simultaneous game.
 */
 games.Mutropas = declare(Game, {
 	name: 'Mutropas',
@@ -3492,7 +3623,6 @@ games.Mutropas = declare(Game, {
 	constructor: function Mutropas(args) {
 		Game.call(this, this.players);
 		args = args || {};
-		this.random = args.random || Randomness.DEFAULT;
 		this.playedPieces = args.playedPieces || [];
 		this.pieces = args.pieces || this.dealPieces();
 		this.__scores__ = args.scores || obj(this.players[0], 0, this.players[1], 0);
@@ -3508,7 +3638,7 @@ games.Mutropas = declare(Game, {
 	pieces go to each player, and one is left out.
 	*/
 	dealPieces: function dealPieces(random) {
-		random = random || this.random;
+		random = random || Randomness.DEFAULT;
 		var piecesPerPlayer = (this.allPieces.length / 2)|0,
 			split1 = random.split(piecesPerPlayer, this.allPieces),
 			split2 = random.split(piecesPerPlayer, split1[1]);
@@ -3613,34 +3743,27 @@ games.Mutropas = declare(Game, {
 	This allows to model the uncertainty that each player has about its opponent's pieces. By doing
 	so an artificial player that searches the game space cannot infer the pieces the opponent has,
 	and hence it cannot cheat.
-	*/
+	*/	
 	view: function view(player) {
-		var gameState = this,
-			opponent = this.opponent(player),
-			random = this.random;
-		return Aleatory.withValues(this.__possiblePieces__(opponent), random,
-			function (pieces) {
-				pieces = pieces || this.value();
-				return new gameState.constructor({ 
-					random: random,
-					playedPieces: gameState.playedPieces,
-					scores: gameState.scores(),
-					pieces: obj(player, gameState.pieces[player], opponent, pieces)
-				});
-			}
-		);
+		var opponent = this.opponent(player);
+		return new Contingent({ pieces: new UniformAleatory(this.__possiblePieces__(opponent)) }, this);
 	},
 	
 	// ## Utility methods ##########################################################################
 	
-	/** Serialization is used in the `toString()` method, but it is also vital for sending the game 
-	state across a network or the marshalling between the rendering thread and a webworker.
+	/** Serialization and materialization using Sermat.
 	*/
-	__serialize__: function __serialize__() {
-		return [this.name, { pieces: this.__pieces__, scores: this.__scores__ }];
+	'static __SERMAT__': {
+		identifier: 'Mutropas',
+		serializer: function serialize_Mutropas(obj) {
+			return [{
+				pieces: obj.pieces, 
+				playedPieces: obj.playedPieces,
+				scores: obj.__scores__
+			}];
+		}
 	}
 }); // declare Mutropas
-
 
 /** # Bahab
 
@@ -3797,10 +3920,13 @@ games.Bahab = declare(Game, {
 	
 	// ## Utility methods ##########################################################################
 	
-	/** The game state serialization simply contains the constructor arguments.
+	/** Serialization and materialization using Sermat.
 	*/
-	__serialize__: function __serialize__() {
-		return [this.name, this.activePlayer(), this.board.string];
+	'static __SERMAT__': {
+		identifier: 'Bahab',
+		serializer: function serialize_Bahab(obj) {
+			return [obj.activePlayer(), obj.board];
+		}
 	}
 }); // declare Bahab.
 
@@ -3978,7 +4104,17 @@ tournaments.Elimination = declare(Tournament, {
 
 
 // See __prologue__.js
+	[Match,
+		games.Bahab, games.Choose2Win, games.ConnectionGame, games.Mutropas, games.OddsAndEvens,
+			games.Pig, games.Predefined, games.TicTacToe, games.ToadsAndFrogs,
+		aleatories.Aleatory, aleatories.UniformAleatory,
+		utils.CheckerboardFromString
+	].forEach(function (type) {
+		type.__SERMAT__.identifier = exports.__package__ +'.'+ type.__SERMAT__.identifier;
+		exports.__SERMAT__.include.push(type);
+	});
+	Sermat.include(exports); // Ludorum uses Sermat internally.
+
 	return exports;
 });
-
 //# sourceMappingURL=ludorum.js.map

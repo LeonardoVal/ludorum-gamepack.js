@@ -9,16 +9,18 @@ function main() {
 	require.config({ 
 		paths: {
 			"creatartis-base": "lib/creatartis-base",
+			"sermat": "lib/sermat-umd",
 			"ludorum": "lib/ludorum",
 			"ludorum-gamepack": "lib/ludorum-gamepack"
 		},
 	});
-	require(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludorum, ludorum_gamepack) {
+	require(['creatartis-base', 'sermat', 'ludorum', 'ludorum-gamepack'], function (base, Sermat, ludorum, ludorum_gamepack) {
 		window.base = base;
+		window.Sermat = Sermat;
 		window.ludorum = ludorum;
 		window.ludorum_gamepack = ludorum_gamepack;
 		(function (s){ // See: <http://jsconsole.com>.
-			s.src = 'jsconsole/inject.js';
+			s.src = 'lib/jsconsole/inject.js';
 			document.body.appendChild(s);
 		})(document.createElement('script'));
 	}, function (error) {

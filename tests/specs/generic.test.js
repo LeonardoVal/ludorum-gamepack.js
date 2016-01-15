@@ -1,5 +1,5 @@
 ﻿// This is a copy fo similar test cases used in ludorum.
-define(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludorum, ludorum_gamepack) {
+define(['creatartis-base', 'sermat', 'ludorum', 'ludorum-gamepack'], function (base, Sermat, ludorum, ludorum_gamepack) {
 	var RANDOM = base.Randomness.DEFAULT;	
 	
 	// Test functions //////////////////////////////////////////////////////////////////////////////
@@ -10,7 +10,9 @@ define(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludor
 			expect(game.name).toBeTruthy();
 			expect(game.players).toBeOfType(Array);
 			expect(game.players.length).toBeGreaterThan(0);
-			expect(game.__serialize__()).toBeOfType(Array);
+			var serialized = Sermat.ser(game);
+			expect(serialized).toBeOfType('string');
+			expect(Sermat.mat(serialized)).toBeOfType(game.constructor);
 		});
 	}
 
@@ -50,8 +52,8 @@ define(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludor
 		it("works like a game", function () {
 			var MAX_PLIES = 500, moves, decisions;
 			for (var i = 0; i < MAX_PLIES; i++) {
-				while (game && game instanceof ludorum.Aleatory) {
-					game = game.next();
+				while (game && game instanceof ludorum.Contingent) {
+					game = game.randomNext();
 				}
 				expect(game).toBeOfType(ludorum.Game);
 				moves = game.moves();
@@ -79,17 +81,18 @@ define(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludor
 	["ConnectFour", "Othello", "Mancala", "Colograph"
 	].forEach(function (name) { // Zerosum games for 2 players with one active player per turn.
 		describe("games."+ name, function () {
-			var game = new ludorum.games[name](),
+			var game = new ludorum_gamepack[name](),
 				options = { zeroSum: true, oneActivePlayerPerTurn: true };
 			itIsGameInstance(game, options);
 			itWorksLikeGame(game, options);
+			expect(ludorum.games[name]).toBe(ludorum_gamepack[name]);
 		});
 	});
 	
 	[/* None yet. */
 	].forEach(function (name) { // Zerosum simultaneous games for 2 players.
 		describe("games."+ name, function () {
-			var game = new ludorum.games[name](),
+			var game = new ludorum_gamepack[name](),
 				options = { zeroSum: true };
 			itIsGameInstance(game, options);
 			itWorksLikeGame(game, options);
