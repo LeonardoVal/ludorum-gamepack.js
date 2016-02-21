@@ -85,7 +85,6 @@ define(['creatartis-base', 'sermat', 'ludorum', 'ludorum-gamepack'], function (b
 				options = { zeroSum: true, oneActivePlayerPerTurn: true };
 			itIsGameInstance(game, options);
 			itWorksLikeGame(game, options);
-			expect(ludorum.games[name]).toBe(ludorum_gamepack[name]);
 		});
 	});
 	

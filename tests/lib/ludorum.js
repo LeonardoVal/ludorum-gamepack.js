@@ -696,15 +696,9 @@ var Contingent = exports.Contingent = declare({
 	the `next` method for further details.
 	*/
 	constructor: function Contingent(haps, state, moves) {
-		if (haps) {
-			this.__haps__ = haps;
-		}
-		if (state) {
-			this.__state__ = state;
-		}
-		if (moves) {
-			this.__moves__ = moves;
-		}
+		this.__haps__ = haps || null;
+		this.__state__ = state || null;
+		this.__moves__ = moves || null;
 	},
 	
 	/** A contingent state's `haps` are the equivalent of `moves` in normal game states. The method 
@@ -769,10 +763,12 @@ var Contingent = exports.Contingent = declare({
 	
 	// ## Utilities ################################################################################
 	
+	/** Serialization and materialization using Sermat.
+	*/
 	'static __SERMAT__': {
 		identifier: 'Contingent',
 		serializer: function serialize_Contingent(obj) {
-			return [obj.__haps__ || null, obj.__state__ || null, obj.__moves__ || null];
+			return [obj.__haps__, obj.__state__, obj.__moves__];
 		}
 	}
 });
@@ -2536,8 +2532,7 @@ players.UCTPlayer = declare(MonteCarloPlayer, {
 Implementation of player user interfaces and proxies.
 */
 var UserInterfacePlayer = players.UserInterfacePlayer = declare(Player, {
-	/** `UserInterfacePlayer` is a generic type for all players that are proxies 
-	of user interfaces.
+	/** `UserInterfacePlayer` is a generic type for all players that are proxies of user interfaces.
 	*/
 	constructor: function UserInterfacePlayer(params) {
 		Player.call(this, params);
@@ -2550,8 +2545,8 @@ var UserInterfacePlayer = players.UserInterfacePlayer = declare(Player, {
 		return this;
 	},
 	
-	/** The `decision(game, player)` of this players returns a future that will 
-	be resolved when the `perform()` method is called.
+	/** The `decision(game, player)` of this players returns a future that will be resolved when the 
+	`perform()` method is called.
 	*/
 	decision: function decision(game, player) {
 		if (this.__future__ && this.__future__.isPending()) {
@@ -2561,9 +2556,8 @@ var UserInterfacePlayer = players.UserInterfacePlayer = declare(Player, {
 		return this.__future__;
 	},
 	
-	/**  User interfaces have to be configured to call `perform(action)` upon 
-	each significant user action.players. It resolves the future returned by the
-	`decision()` method.
+	/**  User interfaces have to be configured to call `perform(action)` upon each significant user 
+	action.players. It resolves the future returned by the `decision()` method.
 	*/
 	perform: function perform(action) {
 		var future = this.__future__;
@@ -2575,12 +2569,11 @@ var UserInterfacePlayer = players.UserInterfacePlayer = declare(Player, {
 	}
 }); // declare UserInterfacePlayer.
 
-// ## User interfaces ##########################################################
+// ## User interfaces ##############################################################################
 
 var UserInterface = players.UserInterface = declare({
-	/** `UserInterface` is the base abstract type for user interfaces that 
-	display a game and allow one or more players to play. The `config` argument 
-	may include the `match` being played.
+	/** `UserInterface` is the base abstract type for user interfaces that display a game and allow 
+	one or more players to play. The `config` argument may include the `match` being played.
 	*/
 	constructor: function UserInterface(config) {
 		this.onBegin = this.onBegin.bind(this);
@@ -2591,8 +2584,7 @@ var UserInterface = players.UserInterface = declare({
 		}
 	},
 	
-	/** `show(match)` discards the current state and sets up to display the 
-	given `match`.
+	/** `show(match)` discards the current state and sets up to display the given `match`.
 	*/
 	show: function show(match) {
 		if (this.match) {
@@ -2606,8 +2598,8 @@ var UserInterface = players.UserInterface = declare({
 		match.events.on('end', this.onEnd);
 	},
 	
-	/** When the player is participated of a match, callbacks are registered to 
-	the following match's events.
+	/** When the player is participated of a match, callbacks are registered to the following 
+	match's events.
 	
 	+ `onBegin(game)` handles the `'begin'` event of the match.
 	*/
@@ -2628,14 +2620,13 @@ var UserInterface = players.UserInterface = declare({
 		this.display(game);
 	},
 	
-	/** `display(game)` renders the game in this user interface. Not 
-	implemented, so please override.
+	/** `display(game)` renders the game in this user interface. Not implemented, so please 
+	override.
 	*/
 	display: unimplemented("UserInterface", "display"),
 	
-	/** `perform(action, actionRole=undefined)` makes the given player perform 
-	the action if the player has a `perform()` method and is included in this 
-	UI's players.
+	/** `perform(action, actionRole=undefined)` makes the given player perform the action if the 
+	player has a `perform()` method and is included in this UI's players.
 	*/
 	perform: function perform(action, actionRole) {
 		iterable(this.match.players).forEach(function (pair) {
@@ -2647,12 +2638,11 @@ var UserInterface = players.UserInterface = declare({
 	}
 }); // declare UserInterface.
 
-// ### HTML based user interfaces ##############################################
+// ### HTML based user interfaces ##################################################################
 
 UserInterface.BasicHTMLInterface = declare(UserInterface, {
-	/** `BasicHTMLInterface(config)` builds a simple HTML based UI, that renders 
-	the game on the DOM using its `display()` method. The `config` argument may
-	include:
+	/** `BasicHTMLInterface(config)` builds a simple HTML based UI, that renders the game on the DOM 
+	using its `display()` method. The `config` argument may include:
 	
 	+ `document=window.document`: the DOM root.
 	+ `container`: the DOM node to render the game in, or its name.
@@ -2666,8 +2656,8 @@ UserInterface.BasicHTMLInterface = declare(UserInterface, {
 		}
 	},
 
-	/** On `display(game)` the `container` is emptied and the game is rendered
-	using its `display(ui)` method.
+	/** On `display(game)` the `container` is emptied and the game is rendered using its 
+	`display(ui)` method.
 	*/
 	display: function display(game) {
 		var container = this.container, child;
@@ -2677,8 +2667,8 @@ UserInterface.BasicHTMLInterface = declare(UserInterface, {
 		game.display(this);
 	},
 	
-	/** `build()` helps DOM creation. The `nodes` argument specifies DOM 
-	elements, each with an array of the shape: `[tag, attributes, elements]`.
+	/** `build()` helps DOM creation. The `nodes` argument specifies DOM elements, each with an 
+	array of the shape: `[tag, attributes, elements]`.
 	*/
 	build: function build(parent, nodes) {
 		var ui = this;
@@ -2777,12 +2767,11 @@ var WebWorkerPlayer = players.WebWorkerPlayer = declare(Player, {
 /** # Aleatory
 
 Aleatories are different means of non determinism that games can use, like: dice, card decks, 
-roulettes, etc. They are used by `Aleatoric` game states.
+roulettes, etc. They are used by `Contingent` game states.
 */
 var Aleatory = exports.aleatories.Aleatory = declare({
 	/** The base class implements an integer uniform random variable between a minimum and maximum
 	value (inclusively).
-	+ 
 	*/
 	constructor: function Aleatory(min, max) {
 		switch (arguments.length) {
@@ -2905,7 +2894,7 @@ var dice = aleatories.dice = {
 				}).sum();
 		}
 	}
-}; //// declare Dice.
+}; // dice.
 
 /** Simple reference games with a predefined outcome, mostly for testing 
 	purposes.
@@ -3128,16 +3117,16 @@ games.ConnectionGame = declare(Game, {
 		if (this.hasOwnProperty('__moves__')) {
 			return this.__moves__;
 		} else if (this.result()) {
-			return this.__moves__ = null;
+			this.__moves__ = null;
 		} else {
-			return this.__moves__ = obj(this.activePlayer(), 
-				iterable(this.board.string).filter(function (c) {
-					return c === '.';
-				}, function (c, i) {
-					return i;
+			var board = this.board;
+			this.__moves__ = obj(this.activePlayer(),
+				board.coordinates().filter(function (coord) {
+					return board.isEmptySquare(coord);
 				}).toArray()
 			);
 		}
+		return this.__moves__;
 	},
 
 	/** To get from one game state to the next, an active player's piece in the square indicated by 
@@ -3146,11 +3135,9 @@ games.ConnectionGame = declare(Game, {
 	next: function next(moves) {
 		var activePlayer = this.activePlayer(),
 			playerIndex = this.players.indexOf(activePlayer),
-			squareIndex = +moves[activePlayer],
-			row = (squareIndex / this.width) >> 0,
-			column = squareIndex % this.width;
-		return new this.constructor((playerIndex + 1) % this.players.length, 
-			this.board.place([row, column], playerIndex.toString(36))
+			coord = moves[activePlayer];
+		return new this.constructor((playerIndex + 1) % this.players.length,
+			this.board.place(coord, playerIndex.toString(36))
 		);
 	},
 	
@@ -3344,31 +3331,6 @@ games.TicTacToe = declare(Game, {
 			board.substr(3,3).split('').join('|'), '-+-+-',
 			board.substr(6,3).split('').join('|')
 		].join('\n');
-	},
-	
-	/** The `display(ui)` method is called by a `UserInterface` to render the game state. The only 
-	supported user interface type is `BasicHTMLInterface`. The look can be configured using CSS 
-	classes.
-	*/
-	display: function display(ui) {
-		raiseIf(!ui || !(ui instanceof UserInterface.BasicHTMLInterface), "Unsupported UI!");
-		var activePlayer = this.activePlayer(),
-			moves = this.moves(),
-			board = this.board,
-			classNames = { 'X': "ludorum-square-Xs", 'O': "ludorum-square-Os", '_': "ludorum-square-empty" },
-			squareHTML = { 'X': "X", 'O': "O", '_': "&nbsp;" };
-		moves = moves && moves[activePlayer] && moves[activePlayer].length > 0;
-		(new CheckerboardFromString(3, 3, this.board, '_'))
-			.renderAsHTMLTable(ui.document, ui.container, function (data) {
-				data.className = classNames[data.square];
-				data.innerHTML = squareHTML[data.square];
-				if (moves && data.square === '_') {
-					data.move = data.coord[0] * 3 + data.coord[1];
-					data.activePlayer = activePlayer;
-					data.onclick = ui.perform.bind(ui, data.move, activePlayer);
-				}
-			});
-		return ui;
 	},
 	
 	// ## Heuristics and AI ########################################################################
@@ -3863,59 +3825,6 @@ games.Bahab = declare(Game, {
 			throw new Error("Invalid moves "+ JSON.stringify(moves) +"!");
 		}
 		return new this.constructor(this.opponent(), this.board.move(move[0], move[1]));
-	},
-	
-	// ## User intefaces ###########################################################################
-	
-	/** The `display(ui)` method is called by a `UserInterface` to render the game state. The only 
-	supported user interface type is `BasicHTMLInterface`. The look can be configured using CSS 
-	classes.
-	*/
-	display: function display(ui) {
-		raiseIf(!ui || !(ui instanceof UserInterface.BasicHTMLInterface), "Unsupported UI!");
-		return this.__displayHTML__(ui);
-	},
-	
-	/** The game board is rendered in HTML as a table. The look can be customized with CSS classes.
-	*/
-	__displayHTML__: function __displayHTML__(ui) {
-		var game = this,
-			moves = this.moves(),
-			activePlayer = this.activePlayer(),
-			board = this.board,
-			classNames = {
-				'A': "ludorum-square-Uppercase-A", 'B': "ludorum-square-Uppercase-B",
-				'a': "ludorum-square-Lowercase-A", 'b': "ludorum-square-Lowercase-B",
-				'.': "ludorum-square-empty"
-			},
-			movesByFrom = moves ? iterable(moves[activePlayer]).groupAll(function (m) {
-				return JSON.stringify(m[0]);
-			}) : {},
-			selectedMoves = ui.selectedPiece && 
-				movesByFrom[JSON.stringify(ui.selectedPiece)].map(function (m) {
-					return JSON.stringify(m[1]);
-				});
-		board.renderAsHTMLTable(ui.document, ui.container, function (data) {
-			data.className = classNames[data.square];
-			data.innerHTML = data.square == '.' ? '&nbsp;' : data.square;
-			if (ui.selectedPiece) {
-				if (selectedMoves && selectedMoves.indexOf(JSON.stringify(data.coord)) >= 0) {
-					data.className = "ludorum-square-"+ activePlayer +"-move";
-					data.onclick = function () {
-						var selectedPiece = ui.selectedPiece;
-						ui.selectedPiece = (void 0);
-						ui.perform([selectedPiece, data.coord], activePlayer);
-					};
-				}
-			}
-			if (movesByFrom.hasOwnProperty(JSON.stringify(data.coord))) {
-				data.onclick = function () {
-					ui.selectedPiece = data.coord;
-					ui.display(game); // Redraw the game state.			
-				};
-			}
-		});
-		return ui;
 	},
 	
 	// ## Utility methods ##########################################################################
