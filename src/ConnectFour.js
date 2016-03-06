@@ -62,35 +62,6 @@ exports.ConnectFour = declare(ludorum.games.ConnectionGame, {
 		throw new Error('Invalid move '+ JSON.stringify(moves) +'!');
 	},
 	
-	// ## User intefaces ###########################################################################
-	
-	/** The `display(ui)` method is called by a `UserInterface` to render the game state. The only 
-	supported user interface type is `BasicHTMLInterface`. The look can be configured using CSS 
-	classes.
-	*/
-	display: function display(ui) {
-		raiseIf(!ui || !(ui instanceof UserInterface.BasicHTMLInterface), "Unsupported UI!");
-		var moves = this.moves(),
-			activePlayer = this.activePlayer(),
-			board = this.board;
-		moves = moves && moves[activePlayer];
-		var table = this.board.renderAsHTMLTable(ui.document, ui.container, function (data) {
-				data.className = data.square === '.' ? 'ludorum-empty' : 'ludorum-player'+ data.square;
-				data.innerHTML = data.square === '.' ? "&nbsp;" : "&#x25CF;";
-				if (moves && moves.indexOf(data.coord[1]) >= 0) {
-					data.move = data.coord[1];
-					data.activePlayer = activePlayer;
-					data.onclick = ui.perform.bind(ui, data.move, activePlayer);
-				}
-			});
-		table.insertBefore(
-			ui.build(ui.document.createElement('colgroup'), 
-				Iterable.repeat(['col'], this.board.width).toArray()),
-			table.firstChild
-		);
-		return ui;
-	},
-	
 	// ## Utility methods ##########################################################################
 	
 	/** Serialization is delegated to the serializer of the parent class.

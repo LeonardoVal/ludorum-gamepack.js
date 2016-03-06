@@ -1,108 +1,84 @@
-﻿var APP = {};
+﻿require.config({ paths: {
+	'creatartis-base': '../../lib/creatartis-base', 
+	'sermat': '../../lib/sermat-umd',
+	'ludorum': '../../lib/ludorum',
+	'ludorum-gamepack': '../../lib/ludorum-gamepack',
+	'playtester': '../../lib/playtester-common'
+}});
+require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester'], 
+		function (ludorum, ludorum_gamepack, base, Sermat, PlayTesterApp) {
+	var BasicHTMLInterface = ludorum.players.UserInterface.BasicHTMLInterface;
 
-require.config({ 
-	paths: { 
-		'creatartis-base': '../../lib/creatartis-base',
-		'sermat': '../../lib/sermat-umd',
-		'ludorum': '../../lib/ludorum',
-		'ludorum-gamepack': '../../lib/ludorum-gamepack'
-	}
-});
-require(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludorum, ludorum_gamepack) {
-	APP.imports = { base: base, ludorum: ludorum, 'ludorum-gamepack': ludorum_gamepack };
-
-// Player options. /////////////////////////////////////////////////////////////
-	var PLAYER_OPTIONS = APP.PLAYER_OPTIONS = [
-		{title: "You", builder: function () { 
-			return new ludorum.players.UserInterfacePlayer(); 
-		}, runOnWorker: false},
-		{title: "Random", builder: function () { 
-			return new ludorum.players.RandomPlayer();
-		}, runOnWorker: false},
-		{title: "MonteCarlo (20 sims)", builder: function () {
-			return new ludorum.players.MonteCarloPlayer({ simulationCount: 20, timeCap: 1500 });
-		}, runOnWorker: true},
-		{title: "MonteCarlo (50 sims)", builder: function () {
-			return new ludorum.players.MonteCarloPlayer({ simulationCount: 50, timeCap: 1500 });
-		}, runOnWorker: true},
-		{title: "MiniMax AlfaBeta (4 plies)", builder: function () {
-			return new ludorum.players.AlphaBetaPlayer({ horizon: 4 });
-		}, runOnWorker: true},
-		{title: "MiniMax AlfaBeta (6 plies)", builder: function () {
-			return new ludorum.players.AlphaBetaPlayer({ horizon: 6 });
-		}, runOnWorker: true},
-		{title: "Default heuristic (4 plies)", builder: function () {
-			return new ludorum.players.AlphaBetaPlayer({ horizon: 4, 
-				heuristic: ludorum.games.Mancala.defaultHeuristic
+	/** Custom HTML interface for TicTacToe.
+	*/
+	var MancalaHTMLInterface = base.declare(BasicHTMLInterface, {
+		constructor: function MancalaHTMLInterface() {
+			BasicHTMLInterface.call(this, {
+				document: document,
+				container: document.getElementById('board')
 			});
-		}, runOnWorker: true},
-		{title: "Default heuristic (6 plies)", builder: function () {
-			return new ludorum.players.AlphaBetaPlayer({ horizon: 6, 
-				heuristic: ludorum.games.Mancala.defaultHeuristic
+		},
+	
+		/** Board is displayed in HTML as a table with two rows: north and south. The north row has the
+		two stores on each side, as `TD`s with `rowspan=2`. Each table cell (houses and stores) contains
+		the number of seeds inside it. 
+		*/
+		display: function display(game) {
+			this.container.innerHTML = ''; // empty the board's DOM.
+			var ui = this,
+				table, tr, td, data,
+				north = game.players[0], 
+				south = game.players[1],
+				activePlayer = game.activePlayer(),
+				moves = game.moves(),
+				boardSquare = function boardSquare(td, i, isStore) {
+					var data = {
+						id: "ludorum-square-"+ i,
+						className: isStore ? "ludorum-square-store" : "ludorum-square-house",
+						square: game.board[i],
+						innerHTML: base.Text.escapeXML(game.board[i])
+					};
+					if (!isStore && moves && moves[activePlayer] && moves[activePlayer].indexOf(i) >= 0) {
+						data.move = i;
+						data.activePlayer = activePlayer;
+						data.className = "ludorum-square-move";
+						td.onclick = data.onclick = ui.perform.bind(ui, data.move, activePlayer);
+					}
+					td['ludorum-data'] = data;
+					td.id = data.id;
+					td.className = data.className;
+					td.innerHTML = data.innerHTML;
+					td.setAttribute("rowspan", isStore ? 2 : 1);
+					return td;
+				};
+			ui.container.appendChild(table = document.createElement('table'));
+			table.appendChild(tr = document.createElement('tr'));
+			tr.appendChild(boardSquare(document.createElement('td'), game.store(north), true));
+			game.houses(north).reverse().forEach(function (h) {
+				tr.appendChild(boardSquare(document.createElement('td'), h, false));
 			});
-		}, runOnWorker: true}
-	];
-	APP.players = [PLAYER_OPTIONS[0].builder(), PLAYER_OPTIONS[0].builder()];
-	$('#player0, #player1').html(PLAYER_OPTIONS.map(function (option, i) {
-		return '<option value="'+ i +'">'+ option.title +'</option>';
-	}).join(''));
-	
-	$('#player0, #player1').change(function () {
-		var i = this.id === 'player0' ? 0 : 1;
-		(function (option) {
-			if (option.runOnWorker) {
-				return ludorum.players.WebWorkerPlayer.create({ 
-					playerBuilder: option.builder,
-					dependencies: [ludorum_gamepack]
-				});
-			} else {
-				return base.Future.when(option.builder());
-			}
-		})(PLAYER_OPTIONS[+this.value]).then(function (player) {
-			APP.players[i] = player;
-			APP.reset();
-		});
-	});/*
-	function selectPlayer(roleNumber, playerNumber) {
-		var option = PLAYER_OPTIONS[+playerNumber];
-		(option.runOnWorker
-			? ludorum.players.WebWorkerPlayer.create({ playerBuilder: option.builder })
-			: base.Future.when(option.builder())
-		).then(function (player) {
-			APP.players[+roleNumber] = player;
-			APP.reset();
-		});
-	}
-	$('#player0').change(function () { selectPlayer(0, this.value); });
-	$('#player1').change(function () { selectPlayer(1, this.value); });*/
-	
-// Buttons. ////////////////////////////////////////////////////////////////////
-	$('#reset').click(APP.reset = function reset() {
-		var board = ludorum.games.Mancala.prototype.makeBoard(4),
-			game = new ludorum.games.Mancala(undefined, board),
-			match = new ludorum.Match(game, APP.players);
-		$('#player0-name').html(base.Text.escapeXML(game.players[0]));
-		$('#player1-name').html(base.Text.escapeXML(game.players[1]));
-		APP.ui = new ludorum.players.UserInterface.BasicHTMLInterface({ match: match, container: 'board' });
-		match.events.on('begin', function (game) {
-			$('footer').html(base.Text.escapeXML(
-				"Turn "+ game.activePlayer() +"."
-			));
-		});
-		match.events.on('next', function (game, next) {
-			$('footer').html(base.Text.escapeXML(
-				"Turn "+ next.activePlayer() +"."
-			));
-		});
-		match.events.on('end', function (game, results) {
-			var player0 = game.players[0];
-			$('footer').html(base.Text.escapeXML(
-				results[player0] === 0 ? 'Drawed game.' : (results[player0] > 0 ? player0 : game.players[1]) +' wins.'
-			));
-		});
-		match.run();
+			tr.appendChild(boardSquare(document.createElement('td'), game.store(south), true));
+			table.appendChild(tr = document.createElement('tr'));
+			game.houses(south).forEach(function (h) {
+				tr.appendChild(boardSquare(document.createElement('td'), h, false));
+			});
+			return ui;
+		}
 	});
-	
-// Start.
-	APP.reset();
+
+	/** PlayTesterApp initialization.
+	*/
+	base.global.APP = new PlayTesterApp(new ludorum_gamepack.Mancala(), new MancalaHTMLInterface(),
+		{ bar: document.getElementsByTagName('footer')[0] });
+	APP.playerUI("You")
+		.playerRandom()
+		.playerMonteCarlo("", true, 20)
+		.playerMonteCarlo("", true, 50)
+		.playerAlfaBeta("", true, 3)
+		.playerAlfaBeta("", true, 5)
+		.playerAlfaBeta("Heuristic-\u03b1\u03b2 (4 plies)", true, 3, 'ludorum_gamepack.Mancala.defaultHeuristic')
+		.playerAlfaBeta("Heuristic-\u03b1\u03b2 (6 plies)", true, 5, 'ludorum_gamepack.Mancala.defaultHeuristic')
+		.selects(['player0', 'player1'])
+		.button('resetButton', document.getElementById('reset'), APP.reset.bind(APP))
+		.reset();
 }); // require().

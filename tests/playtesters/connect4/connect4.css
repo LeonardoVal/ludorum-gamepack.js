@@ -68,12 +68,12 @@ footer {
 #board table tr:last-child {
 	border-bottom: 2px solid black;
 }
-#board table .ludorum-player0 {
+#board table .ludorum-square-player0 {
 	color: rgb(250,230,0);
 	font-weight: bolder;
 	text-shadow: 1px 1px black, -1px -1px black, -1px 1px black, 1px -1px black;
 }
-#board table .ludorum-player1 {
+#board table .ludorum-square-player1 {
 	color: red;
 	font-weight: bolder;
 	text-shadow: 1px 1px black, -1px -1px black, -1px 1px black, 1px -1px black;

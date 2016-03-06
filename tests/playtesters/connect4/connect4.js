@@ -1,81 +1,78 @@
-﻿var APP = {},
-	JS_ROOT = '../../';
+﻿require.config({ paths: {
+	'creatartis-base': '../../lib/creatartis-base', 
+	'sermat': '../../lib/sermat-umd',
+	'ludorum': '../../lib/ludorum',
+	'ludorum-gamepack': '../../lib/ludorum-gamepack',
+	'playtester': '../../lib/playtester-common'
+}});
+require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester'], 
+		function (ludorum, ludorum_gamepack, base, Sermat, PlayTesterApp) {
+	var BasicHTMLInterface = ludorum.players.UserInterface.BasicHTMLInterface;
 
-require.config({ 
-	paths: {
-		'creatartis-base': JS_ROOT +'lib/creatartis-base',
-		'sermat': JS_ROOT +'lib/sermat-umd',
-		'ludorum': JS_ROOT +'lib/ludorum',
-		'ludorum-gamepack': JS_ROOT +'lib/ludorum-gamepack'
-	}
-});
-require(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludorum, ludorum_gamepack) {
-	APP.imports = { base: base, ludorum: ludorum, 'ludorum-gamepack': ludorum_gamepack };
-
-// Player options. /////////////////////////////////////////////////////////////
-	var PLAYER_OPTIONS = APP.PLAYER_OPTIONS = [
-		{title: "You", builder: function () { 
-			return new ludorum.players.UserInterfacePlayer(); 
-		}, runOnWorker: false},
-		{title: "Random", builder: function () { 
-			return new ludorum.players.RandomPlayer();
-		}, runOnWorker: false},
-		{title: "MonteCarlo (50 sims)", builder: function () {
-			return new ludorum.players.MonteCarloPlayer({ simulationCount: 50, timeCap: 1500 });
-		}, runOnWorker: true},
-		{title: "MonteCarlo (100 sims)", builder: function () {
-			return new ludorum.players.MonteCarloPlayer({ simulationCount: 100, timeCap: 1500 });
-		}, runOnWorker: true},
-		{title: "MiniMax AlfaBeta (4 plies)", builder: function () {
-			return new ludorum.players.AlphaBetaPlayer({ horizon: 4 });
-		}, runOnWorker: true},
-		{title: "MiniMax AlfaBeta (6 plies)", builder: function () {
-			return new ludorum.players.AlphaBetaPlayer({ horizon: 6 });
-		}, runOnWorker: true}
-	];
-	APP.players = [PLAYER_OPTIONS[0].builder(), PLAYER_OPTIONS[0].builder()];
-	$('#player0, #player1').html(PLAYER_OPTIONS.map(function (option, i) {
-		return '<option value="'+ i +'">'+ option.title +'</option>';
-	}).join(''));
-	$('#player0, #player1').change(function () {
-		var i = this.id === 'player0' ? 0 : 1;
-		(function (option) {
-			if (option.runOnWorker) {
-				return ludorum.players.WebWorkerPlayer.create({
-					playerBuilder: option.builder,
-					dependencies: [ludorum_gamepack]
+	/** Custom HTML interface for TicTacToe.
+	*/
+	var ConnectFourHTMLInterface = base.declare(BasicHTMLInterface, {
+		constructor: function ConnectFourHTMLInterface() {
+			BasicHTMLInterface.call(this, {
+				document: document,
+				container: document.getElementById('board')
+			});
+		},
+	
+		/** Each of the board's squares looks are customized via CSS.
+		*/
+		classNames: { 
+			'0': "ludorum-square-player0", 
+			'1': "ludorum-square-player1", 
+			'.': "ludorum-square-empty" 
+		},
+		
+		/** This is a mapping from the board to HTML for each of the board's squares.
+		*/
+		squareHTML: {
+			'0': "&#x25CF;",
+			'1': "&#x25CF;",
+			'.': "&nbsp;"
+		},
+	
+		display: function display(game) {
+			this.container.innerHTML = ''; // empty the board's DOM.
+			var ui = this,
+				moves = game.moves(),
+				activePlayer = game.activePlayer(),
+				board = game.board,
+				classNames = this.classNames,
+				squareHTML = this.squareHTML;
+			moves = moves && moves[activePlayer];
+			var table = game.board.renderAsHTMLTable(this.document, this.container, function (data) {
+					data.className = classNames[data.square];
+					data.innerHTML = squareHTML[data.square];
+					if (moves && moves.indexOf(data.coord[1]) >= 0) {
+						data.move = data.coord[1];
+						data.activePlayer = activePlayer;
+						data.onclick = ui.perform.bind(ui, data.move, activePlayer);
+					}
 				});
-			} else {
-				return base.Future.when(option.builder());
-			}
-		})(PLAYER_OPTIONS[+this.value]).then(function (player) {
-			APP.players[i] = player;
-			APP.reset();
-		});
+			table.insertBefore(
+				ui.build(ui.document.createElement('colgroup'), 
+					base.Iterable.repeat(['col'], game.board.width).toArray()),
+				table.firstChild
+			);
+			return ui;
+		}
 	});
-	
-// Buttons. ////////////////////////////////////////////////////////////////////
-	$('#reset').click(APP.reset = function reset() {
-		var game = new ludorum.games.ConnectFour(),
-			match = new ludorum.Match(game, APP.players);
-		$('#player0-name').html(base.Text.escapeXML(game.players[0]));
-		$('#player1-name').html(base.Text.escapeXML(game.players[1]));
-		APP.ui = new ludorum.players.UserInterface.BasicHTMLInterface({ match: match, container: 'board' });
-		match.events.on('begin', function (game) {
-			$('footer').html(base.Text.escapeXML("Turn "+ game.activePlayer() +"."));
-		});
-		match.events.on('next', function (game, next) {
-			$('footer').html(base.Text.escapeXML("Turn "+ next.activePlayer() +"."));
-		});
-		match.events.on('end', function (game, results) {
-			var player0 = game.players[0];
-			$('footer').html(base.Text.escapeXML(
-				results[player0] === 0 ? 'Drawed game.' : (results[player0] > 0 ? player0 : game.players[1]) +' wins.'
-			));
-		});
-		match.run();
-	});
-	
-// Start.
-	APP.reset();
+
+	/** PlayTesterApp initialization.
+	*/
+	base.global.APP = new PlayTesterApp(new ludorum_gamepack.ConnectFour(), new ConnectFourHTMLInterface(),
+		{ bar: document.getElementsByTagName('footer')[0] });
+	APP.playerUI("You")
+		.playerRandom()
+		.playerMonteCarlo("", true, 50)
+		.playerMonteCarlo("", true, 100)
+		.playerAlfaBeta("", true, 3)
+		.playerAlfaBeta("", true, 5)
+		.selects(['player0', 'player1'])
+		.button('resetButton', document.getElementById('reset'), APP.reset.bind(APP))
+		.reset();
 }); // require().

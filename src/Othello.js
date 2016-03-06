@@ -2,7 +2,7 @@
 
 Implementation of [Othello (aka Reversi)](http://en.wikipedia.org/wiki/Reversi) for Ludorum.
 */
-exports.Othello = declare(Game, {
+var Othello = exports.Othello = declare(Game, {
 	name: 'Othello',
 
 	/** The constructor takes the `activePlayer` (`"Black"` by default) and a board (initial board 
@@ -152,37 +152,6 @@ exports.Othello = declare(Game, {
 		return [-squareCount, +squareCount];
 	},
 	
-	// ## User intefaces ###########################################################################
-	
-	/** The `display(ui)` method is called by a `UserInterface` to render the game state. The only 
-	supported user interface type is `BasicHTMLInterface`. The look can be configured using CSS 
-	classes.
-	*/
-	display: function display(ui) {
-		raiseIf(!ui || !(ui instanceof UserInterface.BasicHTMLInterface), "Unsupported UI!");
-		var moves = this.moves(),
-			activePlayer = this.activePlayer(),
-			board = this.board,
-			classNames = {
-				'B': "ludorum-square-Black",
-				'W': "ludorum-square-White",
-				'.': "ludorum-square-empty"
-			};
-		moves = moves && moves[activePlayer].map(JSON.stringify);
-		board.renderAsHTMLTable(ui.document, ui.container, function (data) {
-			data.className = classNames[data.square];
-			data.innerHTML = '&nbsp;';
-			var move = JSON.stringify(data.coord);
-			if (moves && moves.indexOf(move) >= 0) {
-				data.move = data.coord;
-				data.activePlayer = activePlayer;
-				data.className = "ludorum-square-move";
-				data.onclick = ui.perform.bind(ui, data.move, activePlayer);
-			}
-		});
-		return ui;
-	},
-	
 	// ## Utility methods ##########################################################################
 	
 	/** The game state serialization simply contains the constructor arguments.
@@ -267,3 +236,14 @@ exports.Othello = declare(Game, {
 		}
 	}	
 }); // declare Othello.
+
+/** The default heuristic combines piece and mobility ratios with weights that ponder corners and 
+borders but penalizes the squares next to the corners.
+*/
+Othello.heuristics.defaultHeuristic = ludorum.players.HeuristicPlayer.composite(
+	Othello.heuristics.heuristicFromSymmetricWeights(
+		[+9,-3,+3,+3, -3,-3,-1,-1, +3,-1,+1,+1, +3,-1,+1,+1]
+	), 0.6,
+	Othello.heuristics.pieceRatio, 0.2,
+	Othello.heuristics.mobilityRatio, 0.2
+);
