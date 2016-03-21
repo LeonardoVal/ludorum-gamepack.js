@@ -9,7 +9,7 @@ require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester
 		function (ludorum, ludorum_gamepack, base, Sermat, PlayTesterApp) {
 	var BasicHTMLInterface = ludorum.players.UserInterface.BasicHTMLInterface;
 
-	/** Custom HTML interface for TicTacToe.
+	/** Custom HTML interface for Othello.
 	*/
 	var OthelloHTMLInterface = base.declare(BasicHTMLInterface, {
 		constructor: function OthelloHTMLInterface() {

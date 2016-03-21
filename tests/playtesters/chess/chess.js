@@ -1,96 +1,82 @@
-﻿var APP = {};
+﻿require.config({ paths: {
+	'creatartis-base': '../../lib/creatartis-base', 
+	'sermat': '../../lib/sermat-umd',
+	'ludorum': '../../lib/ludorum',
+	'ludorum-gamepack': '../../lib/ludorum-gamepack',
+	'playtester': '../../lib/playtester-common'
+}});
+require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester'], 
+		function (ludorum, ludorum_gamepack, base, Sermat, PlayTesterApp) {
+	var BasicHTMLInterface = ludorum.players.UserInterface.BasicHTMLInterface;
 
-require.config({ 
-	paths: { 
-		'creatartis-base': '../../lib/creatartis-base',
-		'sermat': '../../lib/sermat-umd',
-		'ludorum': '../../lib/ludorum',
-		'ludorum-gamepack': '../../lib/ludorum-gamepack'
-	}
-});
-require(['creatartis-base', 'ludorum', 'ludorum-gamepack'], function (base, ludorum, ludorum_gamepack) {
-	APP.imports = { base: base, ludorum: ludorum, 'ludorum-gamepack': ludorum_gamepack };
+	/** Custom HTML interface for Chess.
+	*/
+	var ChessHTMLInterface = base.declare(BasicHTMLInterface, {
+		constructor: function ChessHTMLInterface() {
+			BasicHTMLInterface.call(this, {
+				document: document,
+				container: document.getElementById('board')
+			});
+		},
+	
+		/** CSS class name for the square.
+		*/
+		__className__: function __className__(square) {
+			return !square ? 'ludorum-square-empty' : 'ludorum-square-'+ square.player +'-'+ square.name;
+		},
+		
+		display: function display(game) {
+			this.container.innerHTML = ''; // empty the board's DOM.
+			var ui = this,
+				moves = game.moves(),
+				activePlayer = game.activePlayer(),
+				board = game.board,
+				movesByFrom = moves ? base.iterable(moves[activePlayer]).groupAll(function (m) {
+					return m[1] +'';
+				}) : {},
+				selectedMoves = ui.selectedPiece && iterable(movesByFrom[ui.selectedPiece]).map(function (m) {
+					return [m[2] +'', m];
+				}).toObject();
+			board.renderAsHTMLTable(ui.document, ui.container, function (data) {
+				/** The graphic of the square is defined by a CSS class. E.g. `ludorum-square-empty`, 
+				`ludorum-square-White-Rook`, `ludorum-square-Black-Pawn` or `ludorum-square-move`.  
+				*/
+				var coordString = data.coord +'';
+				data.className = ui.__className__(data.square);
+				data.innerHTML = '&nbsp;';			
+				if (ui.selectedPiece) {
+					if (selectedMoves && selectedMoves.hasOwnProperty(coordString)) {
+						data.className = 'ludorum-square-'+ activePlayer +'-move';
+						data.onclick = function () {
+							var selectedPiece = ui.selectedPiece;
+							ui.selectedPiece = null;
+							ui.perform(selectedMoves[coordString], activePlayer);
+						};
+					}
+				}
+				if (movesByFrom.hasOwnProperty(coordString)) {
+					data.onclick = function () {
+						ui.selectedPiece = coordString;
+						ui.display(game); // Redraw the game state.     
+					};
+				}
+			});
+			return ui;
+		}
+	});
 
-// Player options. /////////////////////////////////////////////////////////////
-	var PLAYER_OPTIONS = APP.PLAYER_OPTIONS = [
-			{title: "You", builder: function () { 
-				return new ludorum.players.UserInterfacePlayer(); 
-			}, runOnWorker: false },
-			{title: "Random", builder: function () { 
-				return new ludorum.players.RandomPlayer();
-			}, runOnWorker: false },
-			{title: "MonteCarlo (0.5seg)", builder: function () {
-				return new ludorum.players.MonteCarloPlayer({ simulationCount: 100, timeCap: 500 });
-			}, runOnWorker: true },
-			{title: "MonteCarlo (1.0seg)", builder: function () {
-				return new ludorum.players.MonteCarloPlayer({ simulationCount: 100, timeCap: 1000 });
-			}, runOnWorker: true },
-			{title: "AlphaBeta (h=3)", builder: function () {
-				return new ludorum.players.AlphaBetaPlayer({ horizon: 3, 
-					heuristic: ludorum.players.HeuristicPlayer.composite(
-						ludorum.games.Othello.heuristics.heuristicFromSymmetricWeights(
-							[+9,-3,+3,+3, -3,-3,-1,-1, +3,-1,+1,+1, +3,-1,+1,+1]
-						), 0.6,
-						ludorum.games.Othello.heuristics.pieceRatio, 0.2,
-						ludorum.games.Othello.heuristics.mobilityRatio, 0.2
-					)
-				});
-			}, runOnWorker: true },
-			{title: "UCT (1.0seg)", builder: function () {
-				return new ludorum.players.UCTPlayer({ simulationCount: 2000, timeCap: 1000 });
-			}, runOnWorker: true }
-		];
-	APP.players = [PLAYER_OPTIONS[0].builder(), PLAYER_OPTIONS[0].builder()];
-	$('#player0, #player1').html(PLAYER_OPTIONS.map(function (option, i) {
-		return '<option value="'+ i +'">'+ option.title +'</option>';
-	}).join(''));
-	$('#player0, #player1').change(function () {
-		var i = this.id === 'player0' ? 0 : 1;
-		(function (option) {
-			if (option.runOnWorker) {
-				return ludorum.players.WebWorkerPlayer.create({ 
-					playerBuilder: option.builder,
-					dependencies: [ludorum_gamepack]
-				});
-			} else {
-				return base.Future.when(option.builder());
-			}
-		})(PLAYER_OPTIONS[+this.value]).then(function (player) {
-			APP.players[i] = player;
-			APP.reset();
-		});
-	});
-	
-// Buttons. ////////////////////////////////////////////////////////////////////
-	$('#reset').click(APP.reset = function reset() {
-		var game = new ludorum.games.Chess(),
-			match = new ludorum.Match(game, APP.players);
-		$('#player0-name').html(base.Text.escapeXML(game.players[0]));
-		$('#player1-name').html(base.Text.escapeXML(game.players[1]));
-		APP.ui = new ludorum.players.UserInterface.BasicHTMLInterface({ match: match, container: 'board' });
-		match.events.on('begin', function (game) {
-			$('footer').html(base.Text.escapeXML(
-				"Turn "+ game.activePlayer() +"."
-			));
-		});
-		match.events.on('next', function (game, next) {
-			$('footer').html(base.Text.escapeXML(
-				"Turn "+ next.activePlayer() +"."
-			));
-		});
-		match.events.on('end', function (game, results) {
-			var player0 = game.players[0];
-			$('footer').html(
-				base.Text.escapeXML(
-					(results[player0] === 0 ? 'Drawed game.' : 
-						(results[player0] > 0 ? player0 : game.players[1]) +' wins.')) 
-				+'<br/>'+
-				base.Text.escapeXML(JSON.stringify(results))
-			);
-		});
-		match.run();
-	});
-	
-// Start.
-	APP.reset();
+	/** PlayTesterApp initialization.
+	*/
+	base.global.APP = new PlayTesterApp(new ludorum_gamepack.Chess(), new ChessHTMLInterface(),
+		{ bar: document.getElementsByTagName('footer')[0] });
+	APP.playerUI("You")
+		.playerRandom()
+		.playerMonteCarlo("", true, 1000, 500)
+		.playerMonteCarlo("", true, 1000, 1000)
+		.playerUCT("", true, 1000, 500)
+		.playerUCT("", true, 1000, 1000)
+		.playerAlfaBeta("", 3, true)
+		.selects(['player0', 'player1'])
+		.button('resetButton', document.getElementById('reset'), APP.reset.bind(APP))
+		.reset();
 }); // require().
