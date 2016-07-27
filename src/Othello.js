@@ -75,10 +75,10 @@ var Othello = exports.Othello = declare(Game, {
 	lines of the opponent's pieces get enclosed between pieces of the active player.
 	*/
 	moves: function moves(player){
-		if (!player && this.hasOwnProperty('__moves__')) {
-			return this.__moves__;
-		}
 		player = player || this.activePlayer();
+		if (this.hasOwnProperty('__moves'+ player +'__')) {
+			return this['__moves'+ player +'__'];
+		}
 		var board = this.board,
 			coords = {},
 			regexps = this.__MOVE_REGEXPS__[player];
@@ -97,7 +97,7 @@ var Othello = exports.Othello = declare(Game, {
 		}
 		_moves = _moves.length > 0 ? obj(player, _moves) : null;
 		if (arguments.length < 1) {
-			this.__moves__ = _moves; // Cache the result.
+			return this['__moves'+ player +'__'] = _moves; // Cache the result.
 		}
 		return _moves;
 	},
