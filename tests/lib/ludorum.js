@@ -447,7 +447,7 @@ var Player = exports.Player = declare({
 	'static __SERMAT__': {
 		identifier: 'Player',
 		serializer: function serialize_Player(obj) {
-			return this.serializeAsProperties(obj, ['name']);
+			return [{name: obj.name}];
 		}
 	},
 	
@@ -761,6 +761,38 @@ var Contingent = exports.Contingent = declare({
 		}).toArray();
 	},
 	
+	/** The `expectedEvaluation` method explores al possible resulting game states from this 
+	contingent state and applies an evaluation function. This state evaluation function must have 
+	the signature `stateEvaluation(game, player)`. Asynchronous evaluations are supported, in which
+	case a `Future` will be returned.
+	
+	By default the aggregated result is the sum of the evaluations weighted by the probability of
+	each possible resulting game state. The `aggregation` function may be specified to override this 
+	behaviour and process the results in another way. If given, it will be called with an array of
+	triples `[haps, probability, evaluation]`.
+	*/
+	expectedEvaluation: function expectedEvaluation(player, stateEvaluation, aggregation) {
+		var game = this,
+			isAsync = false,
+			possible = this.possibleHaps().map(function (args) {
+				var game2 = game.next(args[0]),
+					ev = !game2.isContingent ? stateEvaluation(game2, player) : 
+						game2.expectedEvaluation(player, stateEvaluation, aggregation);
+				isAsync = isAsync || Future.__isFuture__(ev);
+				return Future.then(ev, function (ev) {
+					args.push(ev);
+					return args;
+				});
+			});
+		return Future.then(isAsync ? Future.all(possible) : possible, aggregation || function (possible) {
+			var r = 0;
+			possible.forEach(function (triple) {
+				r += triple[1] * triple[2];
+			});
+			return r;
+		});
+	},
+	
 	// ## Utilities ################################################################################
 	
 	/** Serialization and materialization using Sermat.
@@ -916,6 +948,17 @@ var Tournament = exports.Tournament = declare({
 		this.events.emit('end', this.statistics, this);
 		if (this.logger) {
 			this.logger.info('Tournament ends for game ', game.name, ':\n', this.statistics, '\n');
+		}
+	},
+	
+	// ## Utilities ################################################################################
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'Tournament',
+		serializer: function serialize_Tournament(obj) {
+			return [obj.game, obj.players];
 		}
 	}
 }); // declare Tournament
@@ -1923,9 +1966,12 @@ players.TracePlayer = declare(Player, {
 	/** Serialization and materialization using Sermat.
 	*/
 	'static __SERMAT__': {
-		identifier: 'Player',
-		serializer: function serialize_Player(obj) {
-			return [{name: obj.name, trace: obj.trace.toArray()}];
+		identifier: 'TracePlayer',
+		serializer: function serialize_TracePlayer(obj) {
+			var ser = Player.__SERMAT__.serializer(obj),
+				args = ser[0];
+			args.trace = obj.trace.toArray();
+			return ser;
 		}
 	}
 }); // declare TracePlayer.
@@ -1972,10 +2018,17 @@ var HeuristicPlayer = players.HeuristicPlayer = declare(Player, {
 	game has results, else it returns the heuristic value for the state.
 	*/
 	stateEvaluation: function stateEvaluation(game, player) {
-		var gameResult = game.result();
-		return gameResult ? gameResult[player] : this.heuristic(game, player);
+		if (!game.isContingent) {
+			var gameResult = game.result();
+			return gameResult ? gameResult[player] : this.heuristic(game, player);
+		} else {
+			/** Heuristics cannot be applied to contingent game states. Hence all posible haps are 
+			explored, and when a non-contingent game state is reached the heuristic is called.
+			*/
+			return game.expectedEvaluation(player, this.stateEvaluation.bind(this));
+		}
 	},
-
+	
 	/** The `heuristic(game, player)` is an evaluation used at states that are not finished games. 
 	The default implementation returns a random number in [-0.5, 0.5). This is only useful in 
 	testing. Any serious use should redefine this.
@@ -1992,43 +2045,18 @@ var HeuristicPlayer = players.HeuristicPlayer = declare(Player, {
 	evaluatedMoves: function evaluatedMoves(game, player) {
 		var heuristicPlayer = this,
 			isAsync = false;
-		if (!game.isContingent) {
-			/** Every move is evaluated using `moveEvaluation`. This may be asynchronous and hence
-			result in a `Future`.
-			*/
-			var result = this.possibleMoves(game, player).map(function (move) {
+		raiseIf(game.isContingent, "Contingent game state have no moves!");
+		/** Every move is evaluated using `moveEvaluation`. This may be asynchronous and hence
+		result in a `Future`.
+		*/
+		var result = this.possibleMoves(game, player).map(function (move) {
 				var e = heuristicPlayer.moveEvaluation(move, game, player);
 				isAsync = isAsync || Future.__isFuture__(e);
 				return Future.then(e, function (e) {
 					return [move, e];
 				});
 			});
-			return isAsync ? Future.all(result) : result;
-		} else {
-			/** Contingent game states don't have moves. Hence all posible haps are explored, and
-			when a non-contingent game state is reached the moves are evaluated.
-			*/
-			var posible = iterable(game.possibleHaps()).mapApply(function (haps, prob) {
-				var es = heuristicPlayer.evaluatedMoves(game.next(haps), player);
-				isAsync = isAsync || Future.__isFuture__(es);
-				return Future.then(es, function (es) {
-					return es.map(function (e) {
-						e[1] *= prob; // Multiply the evaluation by the probability of the haps.
-						return e;
-					});
-				});
-			});
-			/** After all posible scenarios have been evaluated, group the evaluations by move and
-			sum the evaluations weighted by probability.
-			*/
-			return Future.then(isAsync ? Future.all(posible) : posible, function (posible) {
-				return iterable(posible).groupBy(function (p) {
-					return p[0]; // Group evaluations by move.
-				}).mapApply(function (move, evals) {
-					return [move, iterable(evals).select(1).sum()];
-				});
-			});
-		}
+		return isAsync ? Future.all(result) : result;
 	}, // evaluatedMoves()
 	
 	/** The `possibleMoves` for a `player` in a given `game` is a set of objects, with one move for
@@ -2038,7 +2066,7 @@ var HeuristicPlayer = players.HeuristicPlayer = declare(Player, {
 		var moves = game.moves();
 		raiseIf(!moves || !moves[player] || !Array.isArray(moves[player]) || moves[player].length < 1,
 			"Player "+ player +" has no moves in "+ game +" (moves= "+ moves +")!");
-		return iterable(moves[player]).map(function (move) {
+		return moves[player].map(function (move) {
 			return copy(obj(player, move), moves);
 		});
 	},
@@ -2061,9 +2089,8 @@ var HeuristicPlayer = players.HeuristicPlayer = declare(Player, {
 	decision: function decision(game, player) {
 		var random = this.random;
 		return Future.then(this.bestMoves(this.evaluatedMoves(game, player)), function (bestMoves) {
-			bestMoves = iterable(bestMoves).toArray();
-			raiseIf(!bestMoves || !bestMoves.length, 
-				"No moves where selected at ", game, " for player ", player, "!");
+			raiseIf(!bestMoves || !bestMoves.length, "No moves where selected at ", game,
+				" for player ", player, "!");
 			return random.choice(bestMoves)[player];
 		});
 	},
@@ -2092,6 +2119,20 @@ var HeuristicPlayer = players.HeuristicPlayer = declare(Player, {
 			}
 			return sum;
 		};
+	},
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'HeuristicPlayer',
+		serializer: function serialize_HeuristicPlayer(obj) {
+			var ser = Player.__SERMAT__.serializer(obj),
+				args = ser[0];
+			if (obj.hasOwnProperty('heuristic')) {
+				args.heuristic = obj.heuristic;
+			}
+			return ser;
+		}
 	}
 }); // declare HeuristicPlayer.
 
@@ -2113,12 +2154,16 @@ var MaxNPlayer = players.MaxNPlayer = declare(HeuristicPlayer, {
 	given `player`.
 	*/
 	stateEvaluation: function stateEvaluation(game, player) {
-		return this.maxN(game, player, 0)[player];
+		if (!game.isContingent) {
+			return this.maxN(game, player, 0)[player];
+		} else {
+			raise("MaxNPlayer.stateEvalution() does not support contingent game states!"); //TODO
+		}
 	},
 
 	/** `heuristics(game)` returns an heuristic value for each players in the game, as an object.
 	*/
-	heuristics: function heuristic(game) {
+	heuristics: function heuristics(game) {
 		var result = {}, maxN = this;
 		game.players.forEach(function (role) {
 			result[role] = maxN.heuristic(game, role);
@@ -2176,7 +2221,10 @@ var MaxNPlayer = players.MaxNPlayer = declare(HeuristicPlayer, {
 	'static __SERMAT__': {
 		identifier: 'MaxNPlayer',
 		serializer: function serialize_MaxNPlayer(obj) {
-			return this.serializeAsProperties(obj, ['name', 'horizon']);
+			var ser = HeuristicPlayer.__SERMAT__.serializer(obj),
+				args = ser[0];
+			args.horizon = obj.horizon;
+			return ser;
 		}
 	}
 }); // declare MaxNPlayer.
@@ -2186,8 +2234,8 @@ var MaxNPlayer = players.MaxNPlayer = declare(HeuristicPlayer, {
 Automatic players based on pure MiniMax.
 */
 var MiniMaxPlayer = players.MiniMaxPlayer = declare(HeuristicPlayer, {
-	/** The constructor takes the player's `name` and the MiniMax search's 
-	`horizon` (`4` by default).
+	/** The constructor takes the player's `name` and the MiniMax search's `horizon` (`4` by 
+	default).
 	*/
 	constructor: function MiniMaxPlayer(params) {
 		HeuristicPlayer.call(this, params);
@@ -2195,21 +2243,19 @@ var MiniMaxPlayer = players.MiniMaxPlayer = declare(HeuristicPlayer, {
 			.integer('horizon', { defaultValue: 4, coerce: true });
 	},
 
-	/** Every state's evaluation is the minimax value for the given game and 
-	player.
+	/** Every state's evaluation is the minimax value for the given game and player.
 	*/
 	stateEvaluation: function stateEvaluation(game, player) {
 		return this.minimax(game, player, 0);
 	},
 
-	/** The `quiescence(game, player, depth)` method is a stability test for the 
-	given game state. If the game is quiescent, this function must return an 
-	evaluation. Else it must return NaN or an equivalent value. 
+	/** The `quiescence(game, player, depth)` method is a stability test for the given game state. 
+	If the game is quiescent, this function must return an evaluation. Else it must return `NaN` or 
+	an equivalent value. 
 	
-	Final game states are always quiescent, and their evaluation is the game's
-	result for the given player. This default implementation also return an 
-	heuristic evaluation for every game state at a deeper depth than the 
-	player's horizon.
+	Final game states are always quiescent, and their evaluation is the game's result for the given 
+	player. This default implementation also return an heuristic evaluation for every game state at 
+	a deeper depth than the player's horizon.
 	*/
 	quiescence: function quiescence(game, player, depth) {
 		var results = game.result();
@@ -2222,11 +2268,14 @@ var MiniMaxPlayer = players.MiniMaxPlayer = declare(HeuristicPlayer, {
 		}
 	},
 	
-	/** The `minimax(game, player, depth)` method calculates the Minimax 
-	evaluation of the given game for the given player. If the game is not 
-	finished and the depth is greater than the horizon, `heuristic` is used.
+	/** The `minimax(game, player, depth)` method calculates the Minimax evaluation of the given 
+	game for the given player. If the game is not finished and the depth is greater than the 
+	horizon, `heuristic` is used.
 	*/
 	minimax: function minimax(game, player, depth) {
+		if (game.isContingent) {
+			return this.expectiMinimax(game, player, depth);
+		}
 		var value = this.quiescence(game, player, depth);
 		if (isNaN(value)) { // game is not quiescent.
 			var activePlayer = game.activePlayer(),
@@ -2250,6 +2299,21 @@ var MiniMaxPlayer = players.MiniMaxPlayer = declare(HeuristicPlayer, {
 		return value;
 	},
 	
+	/** The `expectiMinimax(game, player, depth)` method is used when calculating the minimax value
+	of a contingent game state. Basically returns the sum of all the minimax values weighted by the 
+	probability of each possible next state. 
+	*/
+	expectiMinimax: function expectiMinimax(game, player, depth) {
+		if (!game.isContingent) {
+			return this.minimax(game, player, depth);
+		} else {
+			var p = this;
+			return game.expectedEvaluation(player, function (game, player) {
+				return p.minimax(game, player, depth + 1);
+			});
+		}
+	},
+	
 	// ## Utilities ################################################################################
 	
 	/** Serialization and materialization using Sermat.
@@ -2257,7 +2321,10 @@ var MiniMaxPlayer = players.MiniMaxPlayer = declare(HeuristicPlayer, {
 	'static __SERMAT__': {
 		identifier: 'MiniMaxPlayer',
 		serializer: function serialize_MiniMaxPlayer(obj) {
-			return this.serializeAsProperties(obj, ['name', 'horizon']);
+			var ser = HeuristicPlayer.__SERMAT__.serializer(obj),
+				args = ser[0];
+			args.horizon = obj.horizon;
+			return ser;
 		}
 	}
 }); // declare MiniMaxPlayer.
@@ -2288,6 +2355,9 @@ players.AlphaBetaPlayer = declare(MiniMaxPlayer, {
 	used.
 	*/
 	minimax: function minimax(game, player, depth, alpha, beta) {
+		if (game.isContingent) {
+			return this.expectiMinimax(game, player, depth, alpha, beta);
+		}
 		var value = this.quiescence(game, player, depth);
 		if (!isNaN(value)) {
 			return value;
@@ -2296,7 +2366,7 @@ players.AlphaBetaPlayer = declare(MiniMaxPlayer, {
 			isActive = activePlayer == player,
 			moves = this.movesFor(game, activePlayer), next;
 		if (moves.length < 1) {
-			throw new Error('No moves for unfinished game '+ game +'.');
+			raise("No moves for unfinished game "+ game +"!");
 		}
 		for (var i = 0; i < moves.length; i++) {
 			next = game.next(obj(activePlayer, moves[i]));
@@ -2317,6 +2387,21 @@ players.AlphaBetaPlayer = declare(MiniMaxPlayer, {
 		return isActive ? alpha : beta;
 	},
 	
+	/** The `expectiMinimax(game, player, depth)` method is used when calculating the minimax value
+	of a contingent game state. Basically returns the sum of all the minimax values weighted by the 
+	probability of each possible next state. 
+	*/
+	expectiMinimax: function expectiMinimax(game, player, depth, alpha, beta) {
+		if (!game.isContingent) {
+			return this.minimax(game, player, depth);
+		} else {
+			var p = this;
+			return game.expectedEvaluation(player, function (game, player) {
+				return p.minimax(game, player, depth + 1, alpha, beta);
+			});
+		}
+	},
+	
 	// ## Utilities ################################################################################
 	
 	/** Serialization and materialization using Sermat.
@@ -2324,7 +2409,7 @@ players.AlphaBetaPlayer = declare(MiniMaxPlayer, {
 	'static __SERMAT__': {
 		identifier: 'AlphaBetaPlayer',
 		serializer: function serialize_AlphaBetaPlayer(obj) {
-			return this.serializeAsProperties(obj, ['name', 'horizon']);
+			return MiniMaxPlayer.__SERMAT__.serializer(obj);
 		}
 	}
 }); // declare AlphaBetaPlayer.
@@ -2376,7 +2461,7 @@ var MonteCarloPlayer = players.MonteCarloPlayer = declare(HeuristicPlayer, {
 					sum: 0, 
 					count: 0 
 				};
-			}).toArray(); // Else the following updates won't work.
+			}); // Else the following updates won't work.
 		for (var i = 0; i < this.simulationCount && Date.now() < endTime; ++i) {
 			options.forEach(function (option) {
 				option.nexts = option.nexts.filter(function (next) {
@@ -2446,7 +2531,15 @@ var MonteCarloPlayer = players.MonteCarloPlayer = declare(HeuristicPlayer, {
 	'static __SERMAT__': {
 		identifier: 'MonteCarloPlayer',
 		serializer: function serialize_MonteCarloPlayer(obj) {
-			return this.serializeAsProperties(obj, ['name', 'simulationCount', 'timeCap', 'agent']);
+			var ser = HeuristicPlayer.__SERMAT__.serializer(obj),
+				args = ser[0];
+			args.simulationCount = obj.simulationCount;
+			args.timeCap = obj.timeCap;
+			args.horizon = obj.horizon;
+			if (obj.agent) {
+				args.agent = obj.agent;
+			}
+			return ser;
 		}
 	}
 }); // declare MonteCarloPlayer
@@ -2521,7 +2614,10 @@ players.UCTPlayer = declare(MonteCarloPlayer, {
 	'static __SERMAT__': {
 		identifier: 'UCTPlayer',
 		serializer: function serialize_UCTPlayer(obj) {
-			return this.serializeAsProperties(obj, ['name', 'simulationCount', 'timeCap', 'explorationConstant']);
+			var ser = MonteCarloPlayer.__SERMAT__.serializer(obj),
+				args = ser[0];
+			args.explorationConstant = obj.explorationConstant;
+			return ser;
 		}
 	}
 }); // declare UCTPlayer
@@ -3874,6 +3970,15 @@ tournaments.RoundRobin = declare(Tournament, {
 		}).product(Iterable.range(this.matchCount)).map(function (tuple) {
 			return new Match(game, tuple[0]);
 		});
+	},
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'RoundRobin',
+		serializer: function serialize_RoundRobin(obj) { //TODO Include statistics.
+			return [obj.game, obj.players, obj.matchCount];
+		}
 	}
 }); //// declare RoundRobin.
 
@@ -3921,6 +4026,15 @@ tournaments.Measurement = declare(Tournament, {
 				players.splice(tuple[1], 0, tuple[0]);
 				return new Match(game, players);
 			});
+	},
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'Measurement',
+		serializer: function serialize_Measurement(obj) { //TODO Include statistics.
+			return [obj.game, obj.players, obj.opponents, obj.matchCount];
+		}
 	}
 }); //// declare Measurement.
 
@@ -4008,15 +4122,32 @@ tournaments.Elimination = declare(Tournament, {
 			this.__matches__ = iterable(this.__currentBracket__).flatten().toArray();
 		}	
 		return this.__matches__.shift();
+	},
+	
+	/** Serialization and materialization using Sermat.
+	*/
+	'static __SERMAT__': {
+		identifier: 'Elimination',
+		serializer: function serialize_Elimination(obj) { //TODO Include statistics.
+			return [obj.game, obj.players, obj.matchCount];
+		}
 	}
 }); //// declare Elimination.
 
 
 // See __prologue__.js
 	[Match,
+	// Games.
 		games.Bahab, games.Choose2Win, games.ConnectionGame, games.Mutropas, games.OddsAndEvens,
 			games.Pig, games.Predefined, games.TicTacToe, games.ToadsAndFrogs,
+	// Players.
+		Player, players.AlphaBetaPlayer, players.MaxNPlayer, players.MiniMaxPlayer, 
+			players.MonteCarloPlayer, players.RandomPlayer, players.TracePlayer, players.UCTPlayer,
+	// Tournaments.
+		Tournament, tournaments.Elimination, tournaments.Measurement, tournaments.RoundRobin, 
+	// Aleatories.
 		aleatories.Aleatory, aleatories.UniformAleatory,
+	// Utilities.
 		utils.CheckerboardFromString
 	].forEach(function (type) {
 		type.__SERMAT__.identifier = exports.__package__ +'.'+ type.__SERMAT__.identifier;
