@@ -294,20 +294,27 @@ var Chess = exports.Chess = declare(Game, {
 	
 	/** TODO.
 	*/
-	next: function next(moves) {
-		//FIXME
+	next: function next(moves, haps, update) {
+		//FIXME WIP
+		raiseIf(haps, 'Haps are not required (given ', haps, ')!');
 		var activePlayer = this.activePlayer(),
 			move = moves[activePlayer],
 			movingPiece = this.board.square(move[1]);
-		console.log(this+"");//FIXME
-		return new this.constructor({
+		//console.log(this+"");//LOG
+		var args = {
 			activePlayer: this.opponent(), 
 			board: movingPiece.next(this, this.board, move),
 			castling: this.castling,
 			enPassant: null,
 			halfMoves: this.halfMoves,
 			fullMoves: this.fullMoves + (activePlayer === 'Black' ? 1 : 0)
-		});
+		};
+		if (update) {
+			this.constructor(args);
+			return this;
+		} else {
+			return new this.constructor(args);
+		}
 	},
 	
 	/** TODO.

@@ -105,7 +105,8 @@ var Othello = exports.Othello = declare(Game, {
 	/** When the active player encloses one or more lines of opponent's pieces between two of its 
 	own, all those are turned into active player's pieces.
 	*/
-	next: function next(moves) {
+	next: function next(moves, haps, update) {
+		raiseIf(haps, 'Haps are not required (given ', haps, ')!');
 		var board = this.board.clone(),
 			activePlayer = this.activePlayer(),
 			piece, valid;
@@ -126,7 +127,12 @@ var Othello = exports.Othello = declare(Game, {
 				});
 			}
 		});
-		return new this.constructor(this.opponent(), [board.height, board.width, board.string]);
+		if (update) {
+			this.constructor(this.opponent(), [board.height, board.width, board.string]);
+			return this;
+		} else {
+			return new this.constructor(this.opponent(), [board.height, board.width, board.string]);
+		}
 	},
 	
 	/** A match ends when the active player cannot move. The winner is the one with more pieces of 

@@ -93,7 +93,8 @@ exports.Colograph = declare(Game, {
 	/** The result of any move is the colouring of one previously uncoloured node with the active 
 	players's colour.
 	*/
-	next: function next(moves) {
+	next: function next(moves, haps, update) {
+		raiseIf(haps, 'Haps are not required (given ', haps, ')!');
 		var activePlayer = this.activePlayer(), 
 			move = +moves[activePlayer] >> 0;
 		raiseIf(move < 0 || move >= this.colours.length, 
@@ -111,14 +112,20 @@ exports.Colograph = declare(Game, {
 				newColours[n1 +','+ move] = activePlayer;
 			} 
 		});
-		return new this.constructor({
+		var args = {
 			activePlayer: this.opponent(activePlayer),
 			colours: newColours,
 			edges: this.edges,
 			shapes: this.shapes,
 			scoreSameShape: this.scoreSameShape,
 			scoreDifferentShape: this.scoreDifferentShape
-		});
+		};
+		if (update) {
+			this.constructor(args);
+			return this;
+		} else {
+			return new this.constructor(args);
+		}
 	},
 
 	// ## Utility methods ##########################################################################

@@ -141,7 +141,8 @@ exports.Mancala = declare(Game, {
 	not through the opponent's. If the move ends at the active player's store, then it has another
 	move. If it ends at an empty house, capture may occur.
 	*/
-	next: function next(moves) {
+	next: function next(moves, haps, update) {
+		raiseIf(haps, 'Haps are not required (given ', haps, ')!');
 		var activePlayer = this.activePlayer(), 
 			move = +moves[activePlayer],
 			newBoard = this.board.slice(0),
@@ -170,7 +171,14 @@ exports.Mancala = declare(Game, {
 				}					
 			}
 		}
-		return new this.constructor(freeTurn ? activePlayer : this.opponent(), newBoard);
+		var nextPlayer = freeTurn ? activePlayer : this.opponent();
+		if (update) {
+			this.activatePlayers(nextPlayer);
+			this.board = newBoard;
+			return this;
+		} else {
+			return new this.constructor(nextPlayer, newBoard);
+		}
 	},
 	
 	/** The `resultBounds` for a Mancala game are estimated with the total number of seeds in the 
