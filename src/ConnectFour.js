@@ -47,7 +47,8 @@ exports.ConnectFour = declare(ludorum.games.ConnectionGame, {
 	/** The `next(moves)` game state drops a piece at the column with the index of the active 
 	player's move.
 	*/
-	next: function next(moves) {
+	next: function next(moves, haps, update) {
+		raiseIf(haps, 'Haps are not required (given ', haps, ')!');
 		var activePlayer = this.activePlayer(),
 			board = this.board.string,
 			column = +moves[activePlayer],
@@ -55,11 +56,34 @@ exports.ConnectFour = declare(ludorum.games.ConnectionGame, {
 			width = this.width;
 		for (var row = 0; row < height; ++row) {
 			if (board.charAt(row * width + column) === '.') {
-				return new this.constructor(this.opponent(), 
-					this.board.place([row, column], activePlayer === this.players[0] ? '0' : '1'));
+				var v = activePlayer === this.players[0] ? '0' : '1';
+				if (update) {
+					this.activatePlayers(this.opponent());
+					this.board.__place__([row, column], v);
+					delete this.__moves__; // Invalidate cached values.
+					delete this.__result__;
+					return this;
+				} else {
+					return new this.constructor(this.opponent(), 
+						this.board.place([row, column], v));
+				}
 			}
 		}
 		throw new Error('Invalid move '+ JSON.stringify(moves) +'!');
+	},
+	
+	result: function result() { //FIXME Workaround for bugs in Ludorum v0.2.0.
+		var lineLength = this.lineLength,
+			lines = this.board.asStrings(this.__lines__(this.height, this.width, lineLength)).join(' ');
+		for (var i = 0; i < this.players.length; ++i) {
+			if (lines.indexOf(i.toString(36).repeat(lineLength)) >= 0) {
+				return this.victory([this.players[i]]);
+			}
+		}
+		if (lines.indexOf('.') < 0) { // No empty squares means a tie.
+			return this.tied();
+		}
+		return null; // The game continues.
 	},
 	
 	// ## Utility methods ##########################################################################
