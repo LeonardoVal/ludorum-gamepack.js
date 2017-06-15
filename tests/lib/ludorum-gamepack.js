@@ -80,7 +80,8 @@ exports.ConnectFour = declare(ludorum.games.ConnectionGame, {
 	/** The `next(moves)` game state drops a piece at the column with the index of the active 
 	player's move.
 	*/
-	next: function next(moves) {
+	next: function next(moves, haps, update) {
+		raiseIf(haps, 'Haps are not required (given ', haps, ')!');
 		var activePlayer = this.activePlayer(),
 			board = this.board.string,
 			column = +moves[activePlayer],
@@ -88,11 +89,34 @@ exports.ConnectFour = declare(ludorum.games.ConnectionGame, {
 			width = this.width;
 		for (var row = 0; row < height; ++row) {
 			if (board.charAt(row * width + column) === '.') {
-				return new this.constructor(this.opponent(), 
-					this.board.place([row, column], activePlayer === this.players[0] ? '0' : '1'));
+				var v = activePlayer === this.players[0] ? '0' : '1';
+				if (update) {
+					this.activatePlayers(this.opponent());
+					this.board.__place__([row, column], v);
+					delete this.__moves__; // Invalidate cached values.
+					delete this.__result__;
+					return this;
+				} else {
+					return new this.constructor(this.opponent(), 
+						this.board.place([row, column], v));
+				}
 			}
 		}
 		throw new Error('Invalid move '+ JSON.stringify(moves) +'!');
+	},
+	
+	result: function result() { //FIXME Workaround for bugs in Ludorum v0.2.0.
+		var lineLength = this.lineLength,
+			lines = this.board.asStrings(this.__lines__(this.height, this.width, lineLength)).join(' ');
+		for (var i = 0; i < this.players.length; ++i) {
+			if (lines.indexOf(i.toString(36).repeat(lineLength)) >= 0) {
+				return this.victory([this.players[i]]);
+			}
+		}
+		if (lines.indexOf('.') < 0) { // No empty squares means a tie.
+			return this.tied();
+		}
+		return null; // The game continues.
 	},
 	
 	// ## Utility methods ##########################################################################
@@ -214,7 +238,8 @@ var Othello = exports.Othello = declare(Game, {
 	/** When the active player encloses one or more lines of opponent's pieces between two of its 
 	own, all those are turned into active player's pieces.
 	*/
-	next: function next(moves) {
+	next: function next(moves, haps, update) {
+		raiseIf(haps, 'Haps are not required (given ', haps, ')!');
 		var board = this.board.clone(),
 			activePlayer = this.activePlayer(),
 			piece, valid;
@@ -235,7 +260,12 @@ var Othello = exports.Othello = declare(Game, {
 				});
 			}
 		});
-		return new this.constructor(this.opponent(), [board.height, board.width, board.string]);
+		if (update) {
+			this.constructor(this.opponent(), [board.height, board.width, board.string]);
+			return this;
+		} else {
+			return new this.constructor(this.opponent(), [board.height, board.width, board.string]);
+		}
 	},
 	
 	/** A match ends when the active player cannot move. The winner is the one with more pieces of 
@@ -500,7 +530,8 @@ exports.Mancala = declare(Game, {
 	not through the opponent's. If the move ends at the active player's store, then it has another
 	move. If it ends at an empty house, capture may occur.
 	*/
-	next: function next(moves) {
+	next: function next(moves, haps, update) {
+		raiseIf(haps, 'Haps are not required (given ', haps, ')!');
 		var activePlayer = this.activePlayer(), 
 			move = +moves[activePlayer],
 			newBoard = this.board.slice(0),
@@ -529,7 +560,14 @@ exports.Mancala = declare(Game, {
 				}					
 			}
 		}
-		return new this.constructor(freeTurn ? activePlayer : this.opponent(), newBoard);
+		var nextPlayer = freeTurn ? activePlayer : this.opponent();
+		if (update) {
+			this.activatePlayers(nextPlayer);
+			this.board = newBoard;
+			return this;
+		} else {
+			return new this.constructor(nextPlayer, newBoard);
+		}
 	},
 	
 	/** The `resultBounds` for a Mancala game are estimated with the total number of seeds in the 
@@ -720,7 +758,8 @@ exports.Colograph = declare(Game, {
 	/** The result of any move is the colouring of one previously uncoloured node with the active 
 	players's colour.
 	*/
-	next: function next(moves) {
+	next: function next(moves, haps, update) {
+		raiseIf(haps, 'Haps are not required (given ', haps, ')!');
 		var activePlayer = this.activePlayer(), 
 			move = +moves[activePlayer] >> 0;
 		raiseIf(move < 0 || move >= this.colours.length, 
@@ -738,14 +777,20 @@ exports.Colograph = declare(Game, {
 				newColours[n1 +','+ move] = activePlayer;
 			} 
 		});
-		return new this.constructor({
+		var args = {
 			activePlayer: this.opponent(activePlayer),
 			colours: newColours,
 			edges: this.edges,
 			shapes: this.shapes,
 			scoreSameShape: this.scoreSameShape,
 			scoreDifferentShape: this.scoreDifferentShape
-		});
+		};
+		if (update) {
+			this.constructor(args);
+			return this;
+		} else {
+			return new this.constructor(args);
+		}
 	},
 
 	// ## Utility methods ##########################################################################
@@ -1285,20 +1330,27 @@ var Chess = exports.Chess = declare(Game, {
 	
 	/** TODO.
 	*/
-	next: function next(moves) {
-		//FIXME
+	next: function next(moves, haps, update) {
+		//FIXME WIP
+		raiseIf(haps, 'Haps are not required (given ', haps, ')!');
 		var activePlayer = this.activePlayer(),
 			move = moves[activePlayer],
 			movingPiece = this.board.square(move[1]);
-		console.log(this+"");//FIXME
-		return new this.constructor({
+		//console.log(this+"");//LOG
+		var args = {
 			activePlayer: this.opponent(), 
 			board: movingPiece.next(this, this.board, move),
 			castling: this.castling,
 			enPassant: null,
 			halfMoves: this.halfMoves,
 			fullMoves: this.fullMoves + (activePlayer === 'Black' ? 1 : 0)
-		});
+		};
+		if (update) {
+			this.constructor(args);
+			return this;
+		} else {
+			return new this.constructor(args);
+		}
 	},
 	
 	/** TODO.
