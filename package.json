@@ -22,8 +22,8 @@
 		"LICENSE.md"
 	],
 	"dependencies": {
-		"ludorum": "~0.1.6",
-		"creatartis-base": "~0.1.6",
+		"ludorum": "~0.2.0",
+		"creatartis-base": "~0.1.7",
 		"sermat": "~0.0.7"
 	},
 	"devDependencies": {
