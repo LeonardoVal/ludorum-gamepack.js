@@ -72,8 +72,10 @@ require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester
 		{ bar: document.getElementsByTagName('footer')[0] });
 	APP.playerUI("You")
 		.playerRandom()
-		.playerMonteCarlo("", true, 20)
-		.playerMonteCarlo("", true, 50)
+		.playerMonteCarlo("", true, Infinity, 100)
+		.playerMonteCarlo("", true, Infinity, 1000)
+		.playerUCT("", true, Infinity, 100)
+		.playerUCT("", true, Infinity, 1000)
 		.playerAlfaBeta("", true, 3)
 		.playerAlfaBeta("", true, 5)
 		.playerAlfaBeta("Heuristic-\u03b1\u03b2 (4 plies)", true, 3, 'ludorum_gamepack.Mancala.defaultHeuristic')

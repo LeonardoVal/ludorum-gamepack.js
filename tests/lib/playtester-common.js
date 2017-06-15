@@ -116,7 +116,7 @@ define(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat'], function (l
 		},
 		
 		reset: function reset() {
-			var match = new ludorum.Match(this.game, this.currentPlayers);
+			var match = new ludorum.Match(this.game.clone(), this.currentPlayers);
 			this.currentMatch = match;
 			this.ui.show(match);
 			var bar = this.elements.bar;

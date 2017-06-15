@@ -68,8 +68,8 @@ require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester
 		{ bar: document.getElementsByTagName('footer')[0] });
 	APP.playerUI("You")
 		.playerRandom()
-		.playerMonteCarlo("", true, 50)
-		.playerMonteCarlo("", true, 100)
+		.playerMonteCarlo("", true, Infinity, 100)
+		.playerMonteCarlo("", true, Infinity, 1000)
 		.playerAlfaBeta("", true, 3)
 		.playerAlfaBeta("", true, 5)
 		.selects(['player0', 'player1'])

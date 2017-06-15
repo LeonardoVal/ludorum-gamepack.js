@@ -56,10 +56,11 @@ require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester
 		{ bar: document.getElementsByTagName('footer')[0] });
 	APP.playerUI("You")
 		.playerRandom()
-		.playerMonteCarlo("", true, 1000, 500)
-		.playerMonteCarlo("", true, 1000, 1000)
+		.playerMonteCarlo("", true, Infinity, 100)
+		.playerMonteCarlo("", true, Infinity, 500)
+		.playerUCT("", true, Infinity, 100)
+		.playerUCT("", true, Infinity, 500)
 		.playerAlfaBeta("", 3, true, 'ludorum_gamepack.Othello.heuristics.defaultHeuristic')
-		.playerUCT("", true, 1000, 1000)
 		.selects(['player0', 'player1'])
 		.button('resetButton', document.getElementById('reset'), APP.reset.bind(APP))
 		.reset();
