@@ -1,14 +1,6 @@
 ﻿/** Package wrapper and layout.
 */
-(function (global, init) { "use strict"; // Universal Module Definition.
-	if (typeof define === 'function' && define.amd) {
-		define(['creatartis-base', 'sermat', 'ludorum'], init); // AMD module.
-	} else if (typeof module === 'object' && module.exports) {
-		module.exports = init(require('creatartis-base'), require('sermat'), require('ludorum')); // CommonJS module.
-	} else { // Browser or web worker (probably).
-		global.ludorum_gamepack = init(global.base, global.ludorum); // Assumes base is loaded.
-	}
-})(this, function __init__(base, Sermat, ludorum) { "use strict";
+function __init__(base, Sermat, ludorum) { "use strict";
 // Import synonyms. ////////////////////////////////////////////////////////////////////////////////
 	var declare = base.declare,
 		obj = base.obj,

@@ -1,11 +1,11 @@
 ﻿require.config({ paths: {
-	'creatartis-base': '../../lib/creatartis-base', 
+	'creatartis-base': '../../lib/creatartis-base.min',
 	'sermat': '../../lib/sermat-umd',
-	'ludorum': '../../lib/ludorum',
+	'ludorum': '../../lib/ludorum.min',
 	'ludorum-gamepack': '../../lib/ludorum-gamepack',
 	'playtester': '../../lib/playtester-common'
 }});
-require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester'], 
+require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester'],
 		function (ludorum, ludorum_gamepack, base, Sermat, PlayTesterApp) {
 	var BasicHTMLInterface = ludorum.players.UserInterface.BasicHTMLInterface;
 
@@ -18,15 +18,15 @@ require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester
 				container: document.getElementById('board')
 			});
 		},
-	
+
 		/** Each of the board's squares looks are customized via CSS.
 		*/
-		classNames: { 
+		classNames: {
 			'B': "ludorum-square-Black",
 			'W': "ludorum-square-White",
 			'.': "ludorum-square-empty"
 		},
-		
+
 		display: function display(game) {
 			this.container.innerHTML = ''; // empty the board's DOM.
 			var ui = this,

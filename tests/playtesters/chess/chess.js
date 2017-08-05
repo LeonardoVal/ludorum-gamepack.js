@@ -1,11 +1,11 @@
 ﻿require.config({ paths: {
-	'creatartis-base': '../../lib/creatartis-base', 
+	'creatartis-base': '../../lib/creatartis-base.min',
 	'sermat': '../../lib/sermat-umd',
-	'ludorum': '../../lib/ludorum',
+	'ludorum': '../../lib/ludorum.min',
 	'ludorum-gamepack': '../../lib/ludorum-gamepack',
 	'playtester': '../../lib/playtester-common'
 }});
-require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester'], 
+require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester'],
 		function (ludorum, ludorum_gamepack, base, Sermat, PlayTesterApp) {
 	var BasicHTMLInterface = ludorum.players.UserInterface.BasicHTMLInterface;
 
@@ -18,13 +18,13 @@ require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester
 				container: document.getElementById('board')
 			});
 		},
-	
+
 		/** CSS class name for the square.
 		*/
 		__className__: function __className__(square) {
 			return !square ? 'ludorum-square-empty' : 'ludorum-square-'+ square.player +'-'+ square.name;
 		},
-		
+
 		display: function display(game) {
 			this.container.innerHTML = ''; // empty the board's DOM.
 			var ui = this,
@@ -38,12 +38,12 @@ require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester
 					return [m[2] +'', m];
 				}).toObject();
 			board.renderAsHTMLTable(ui.document, ui.container, function (data) {
-				/** The graphic of the square is defined by a CSS class. E.g. `ludorum-square-empty`, 
-				`ludorum-square-White-Rook`, `ludorum-square-Black-Pawn` or `ludorum-square-move`.  
+				/** The graphic of the square is defined by a CSS class. E.g. `ludorum-square-empty`,
+				`ludorum-square-White-Rook`, `ludorum-square-Black-Pawn` or `ludorum-square-move`.
 				*/
 				var coordString = data.coord +'';
 				data.className = ui.__className__(data.square);
-				data.innerHTML = '&nbsp;';			
+				data.innerHTML = '&nbsp;';
 				if (ui.selectedPiece) {
 					if (selectedMoves && selectedMoves.hasOwnProperty(coordString)) {
 						data.className = 'ludorum-square-'+ activePlayer +'-move';
@@ -57,7 +57,7 @@ require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester
 				if (movesByFrom.hasOwnProperty(coordString)) {
 					data.onclick = function () {
 						ui.selectedPiece = coordString;
-						ui.display(game); // Redraw the game state.     
+						ui.display(game); // Redraw the game state.
 					};
 				}
 			});

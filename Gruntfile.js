@@ -1,99 +1,27 @@
 ﻿/** Gruntfile for [ludorum-gamepack.js](http://github.com/LeonardoVal/ludorum-gamepack.js).
 */
-var path = require('path');
-
-module.exports = function(grunt) {
-	var SOURCE_FILES = ['__prologue__',
-		'ConnectFour',
-		'Othello',
-		'Mancala',
-		'Colograph',
-		'Chess',
-	// end
-		'__epilogue__'].map(function (n) {
-			return 'src/'+ n +'.js';
-		});
-
-	grunt.file.defaultEncoding = 'utf8';
-// Init config. ////////////////////////////////////////////////////////////////////////////////////
+module.exports = function (grunt) {
 	grunt.initConfig({
 		pkg: grunt.file.readJSON('package.json'),
-		concat: { //////////////////////////////////////////////////////////////////////////////////
-			options: {
-				separator: '\n\n',
-				sourceMap: true
-			},
-			build: {
-				src: SOURCE_FILES,
-				dest: 'build/<%= pkg.name %>.js'
-			},
-		},
-		jshint: { //////////////////////////////////////////////////////////////////////////////////
-			build: {
-				options: { // Check <http://jshint.com/docs/options/>.
-					loopfunc: true,
-					boss: true
-				},
-				src: ['build/<%= pkg.name %>.js', 'tests/specs/*.js'],
-			},
-		},
-		copy: { ////////////////////////////////////////////////////////////////////////////////////
-			test: {
-				files: [
-					'node_modules/requirejs/require.js',
-					'node_modules/sermat/build/sermat-umd.js', 'node_modules/sermat/build/sermat-umd.js.map',
-					'node_modules/creatartis-base/build/creatartis-base.js', 'node_modules/creatartis-base/build/creatartis-base.js.map', 
-					'node_modules/ludorum/build/ludorum.js', 'node_modules/ludorum/build/ludorum.js.map',
-					'build/<%= pkg.name %>.js', 'build/<%= pkg.name %>.js.map'
-					].map(function (f) {
-						return { nonull: true, src: f, dest: 'tests/lib/'+ path.basename(f) };
-					})
-			}
-		},
-		uglify: { //////////////////////////////////////////////////////////////////////////////////
-			build: {
-				src: 'build/<%= pkg.name %>.js',
-				dest: 'build/<%= pkg.name %>.min.js',
-				options: {
-					banner: '//! <%= pkg.name %> <%= pkg.version %>\n',
-					report: 'min',
-					sourceMap: true,
-					sourceMapIn: 'build/<%= pkg.name %>.js.map',
-					sourceMapName: 'build/<%= pkg.name %>.min.js.map'
-				}
-			}
-		},
-		karma: { ///////////////////////////////////////////////////////////////////////////////////
-			options: {
-				configFile: 'tests/karma.conf.js'
-			},
-			test_chrome: { browsers: ['Chrome'] },
-			test_firefox: { browsers: ['Firefox'] }
-		},
-		docker: { //////////////////////////////////////////////////////////////////////////////////
-			build: {
-				src: ['src/**/*.js', 'README.md', 'docs/*.md'],
-				dest: 'docs/docker',
-				options: {
-					colourScheme: 'borland',
-					ignoreHidden: true,
-					exclude: 'src/__prologue__.js,src/__epilogue__.js'
-				}
-			}
-		}
 	});
-// Load tasks. /////////////////////////////////////////////////////////////////////////////////////
-	grunt.loadNpmTasks('grunt-contrib-concat');
-	grunt.loadNpmTasks('grunt-contrib-copy');
-	grunt.loadNpmTasks('grunt-contrib-jshint');
-	grunt.loadNpmTasks('grunt-contrib-uglify');
-	grunt.loadNpmTasks('grunt-karma');
-	grunt.loadNpmTasks('grunt-docker');	
-	
-// Register tasks. /////////////////////////////////////////////////////////////////////////////////
-	grunt.registerTask('compile', ['concat:build', 'jshint:build', 'uglify:build', 'copy:test']); 
-	grunt.registerTask('test', ['compile', 'karma:test_firefox']);
-	grunt.registerTask('full-test', ['test', 'karma:test_chrome']);
-	grunt.registerTask('build', ['test', 'docker:build']);
+
+	require('creatartis-grunt').config(grunt, {
+		sourceNames: ['__prologue__',
+				'ConnectFour',
+				'Othello',
+				'Mancala',
+				'Colograph',
+				'Chess',
+			'__epilogue__'],
+		deps: [
+			{ name: 'creatartis-base', id: 'base',
+				path: 'node_modules/creatartis-base/build/creatartis-base.min.js' },
+			{ name: 'sermat', id: 'Sermat',
+				path: 'node_modules/sermat/build/sermat-umd.js' },
+			{ name: 'ludorum', id: 'ludorum',
+				path: 'node_modules/ludorum/build/ludorum.min.js' }
+		]
+	});
+
 	grunt.registerTask('default', ['build']);
 };

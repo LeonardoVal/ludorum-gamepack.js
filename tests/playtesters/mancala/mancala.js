@@ -1,11 +1,11 @@
 ﻿require.config({ paths: {
-	'creatartis-base': '../../lib/creatartis-base', 
+	'creatartis-base': '../../lib/creatartis-base.min',
 	'sermat': '../../lib/sermat-umd',
-	'ludorum': '../../lib/ludorum',
+	'ludorum': '../../lib/ludorum.min',
 	'ludorum-gamepack': '../../lib/ludorum-gamepack',
 	'playtester': '../../lib/playtester-common'
 }});
-require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester'], 
+require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester'],
 		function (ludorum, ludorum_gamepack, base, Sermat, PlayTesterApp) {
 	var BasicHTMLInterface = ludorum.players.UserInterface.BasicHTMLInterface;
 
@@ -18,16 +18,16 @@ require(['ludorum', 'ludorum-gamepack', 'creatartis-base', 'sermat', 'playtester
 				container: document.getElementById('board')
 			});
 		},
-	
+
 		/** Board is displayed in HTML as a table with two rows: north and south. The north row has the
 		two stores on each side, as `TD`s with `rowspan=2`. Each table cell (houses and stores) contains
-		the number of seeds inside it. 
+		the number of seeds inside it.
 		*/
 		display: function display(game) {
 			this.container.innerHTML = ''; // empty the board's DOM.
 			var ui = this,
 				table, tr, td, data,
-				north = game.players[0], 
+				north = game.players[0],
 				south = game.players[1],
 				activePlayer = game.activePlayer(),
 				moves = game.moves(),
