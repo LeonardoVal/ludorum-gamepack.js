@@ -25,12 +25,13 @@
 		"LICENSE.md"
 	],
 	"dependencies": {
-		"creatartis-base": "~0.1.7",
-		"ludorum": "~0.2.0",
-		"sermat": "~0.0.8"
+		"@creatartis/ludorum-game-connect4": "~0.1.0",
+		"@creatartis/ludorum-game-colograph": "~0.1.0",
+		"@creatartis/ludorum-game-mancala": "~0.1.0",
+		"@creatartis/ludorum-game-reversi": "~0.0.1"
 	},
 	"devDependencies": {
-		"creatartis-grunt": "~0.0.3"
+		"creatartis-grunt": "~0.0.5"
 	},
 	"scripts": {
 		"post-install": "npm dedupe"

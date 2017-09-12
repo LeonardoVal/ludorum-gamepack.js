@@ -6,20 +6,13 @@ module.exports = function (grunt) {
 	});
 
 	require('creatartis-grunt').config(grunt, {
-		sourceNames: ['__prologue__',
-				'ConnectFour',
-				'Othello',
-				'Mancala',
-				'Colograph',
-				'Chess',
-			'__epilogue__'],
+		sourceNames: ['__prologue__', '__epilogue__'],
 		deps: [
-			{ name: 'creatartis-base', id: 'base',
-				path: 'node_modules/creatartis-base/build/creatartis-base.min.js' },
-			{ name: 'sermat', id: 'Sermat',
-				path: 'node_modules/sermat/build/sermat-umd.js' },
-			{ name: 'ludorum', id: 'ludorum',
-				path: 'node_modules/ludorum/build/ludorum.min.js' }
+			'@creatartis/ludorum-game-connect4',
+			'@creatartis/ludorum-game-colograph',
+			'@creatartis/ludorum-game-mancala',
+			'@creatartis/ludorum-game-reversi',
+			{ id: 'sermat', path: 'node_modules/sermat/build/sermat-umd-min.js', indirect: true }
 		]
 	});
 
