@@ -1,10 +1,10 @@
 (function (init) { "use strict";
 			if (typeof define === 'function' && define.amd) {
-				define(["ludorum-game-connect4","ludorum-game-colograph","ludorum-game-mancala","ludorum-game-reversi"], init); // AMD module.
+				define(["ludorum-game-connect4","ludorum-game-colograph","ludorum-game-mancala","ludorum-game-reversi","sermat"], init); // AMD module.
 			} else if (typeof exports === 'object' && module.exports) {
-				module.exports = init(require("@creatartis/ludorum-game-connect4"),require("@creatartis/ludorum-game-colograph"),require("@creatartis/ludorum-game-mancala"),require("@creatartis/ludorum-game-reversi")); // CommonJS module.
+				module.exports = init(require("@creatartis/ludorum-game-connect4"),require("@creatartis/ludorum-game-colograph"),require("@creatartis/ludorum-game-mancala"),require("@creatartis/ludorum-game-reversi"),require("sermat")); // CommonJS module.
 			} else {
-				this["ludorum-gamepack"] = init(this["ludorum-game-connect4"],this["ludorum-game-colograph"],this["ludorum-game-mancala"],this["ludorum-game-reversi"]); // Browser.
+				this["ludorum-gamepack"] = init(this["ludorum-game-connect4"],this["ludorum-game-colograph"],this["ludorum-game-mancala"],this["ludorum-game-reversi"],this.sermat); // Browser.
 			}
 		}).call(this,/** Package wrapper and layout.
 */

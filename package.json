@@ -25,13 +25,13 @@
 		"LICENSE.md"
 	],
 	"dependencies": {
-		"@creatartis/ludorum-game-connect4": "~0.1.0",
-		"@creatartis/ludorum-game-colograph": "~0.1.0",
-		"@creatartis/ludorum-game-mancala": "~0.1.0",
-		"@creatartis/ludorum-game-reversi": "~0.0.1"
+		"@creatartis/ludorum-game-connect4": "~0.1.1",
+		"@creatartis/ludorum-game-colograph": "~0.1.1",
+		"@creatartis/ludorum-game-mancala": "~0.1.1",
+		"@creatartis/ludorum-game-reversi": "~0.1.0"
 	},
 	"devDependencies": {
-		"creatartis-grunt": "~0.0.5"
+		"creatartis-grunt": "~0.0.9"
 	},
 	"scripts": {
 		"post-install": "npm dedupe"
