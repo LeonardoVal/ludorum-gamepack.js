@@ -6,13 +6,29 @@ module.exports = function (grunt) {
 	});
 
 	require('creatartis-grunt').config(grunt, {
-		sourceNames: ['__prologue__', '__epilogue__'],
+		sourceFiles: [
+			'src/__prologue__.js',
+			'node_modules/@creatartis/ludorum-game-connect4/build/ludorum-game-connect4-raw.js',
+			'node_modules/@creatartis/ludorum-game-colograph/build/ludorum-game-colograph-raw.js',
+			'node_modules/@creatartis/ludorum-game-mancala/build/ludorum-game-mancala-raw.js',
+			'node_modules/@creatartis/ludorum-game-reversi/build/ludorum-game-reversi-raw.js',
+			'src/__epilogue__.js'
+		],
+		//sourceMap: false,
+		concatProcess: function (src, filepath) { // Code wrapper for game libraries.
+			var chk = /@creatartis\/(ludorum-game-.*?)\/.*?-raw.js/.exec(filepath);
+			if (chk) {
+				return '(function () { this[\''+ chk[1] +'\'] = ('+ src +
+					'\n)(base, Sermat, ludorum); }).call(that);\n';
+			} else {
+				return src;
+			}
+		},
 		deps: [
-			'@creatartis/ludorum-game-connect4',
-			'@creatartis/ludorum-game-colograph',
-			'@creatartis/ludorum-game-mancala',
-			'@creatartis/ludorum-game-reversi',
-			{ id: 'sermat', path: 'node_modules/sermat/build/sermat-umd-min.js', indirect: true }
+			{ id: 'creatartis-base', name: 'base' },
+			{ id: 'sermat', name: 'Sermat',
+		 		path: 'node_modules/sermat/build/sermat-umd-min.js' },
+			{ id: 'ludorum' }
 		]
 	});
 
