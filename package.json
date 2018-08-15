@@ -27,10 +27,10 @@
 	"dependencies": {
 		"creatartis-base": "~0.1.7",
 		"sermat": "~0.0.9",
-		"ludorum": "0.2.1-alpha"
+		"ludorum": "0.2.1"
 	},
 	"devDependencies": {
-		"creatartis-grunt": "0.0.11",
+		"creatartis-grunt": "0.0.15",
 		"@creatartis/ludorum-game-colograph": "~0.1.1",
 		"@creatartis/ludorum-game-connect4": "~0.1.1",
 		"@creatartis/ludorum-game-mancala": "~0.1.1",
