@@ -30,7 +30,7 @@
 		"ludorum": "0.2.1"
 	},
 	"devDependencies": {
-		"creatartis-grunt": "0.0.15",
+		"@creatartis/creatartis-grunt": "0.0.16-alpha",
 		"@creatartis/ludorum-game-colograph": "~0.1.1",
 		"@creatartis/ludorum-game-connect4": "~0.1.1",
 		"@creatartis/ludorum-game-mancala": "~0.1.1",

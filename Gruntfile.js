@@ -5,7 +5,7 @@ module.exports = function (grunt) {
 		pkg: grunt.file.readJSON('package.json'),
 	});
 
-	require('creatartis-grunt').config(grunt, {
+	require('@creatartis/creatartis-grunt').config(grunt, {
 		sourceFiles: [
 			'src/__prologue__.js',
 			'node_modules/@creatartis/ludorum-game-connect4/build/ludorum-game-connect4-raw.js',
